@@ -1,0 +1,57 @@
+---
+title: "Parte2 - Salário dos Profissionais de TI no Brasil"
+author: "Arthur Sena"
+date: "04/13/2015"
+output: html_document
+---
+
+#Descrição dos dados: 
+Os dados foram coletados através de um formulário no google. Tais dados contem informações sobre o salário de algumas profissões de TI no Brasil, onde foram coletados 162 obervações com 12 variáveis cada. Na figura abaixo, é possivel visualizar uma pequena amostra dos dados.
+
+```{r}
+salariosTI <- read.csv("salarios-ti-refinado.csv")
+head(salariosTI[,c(2,3,4,6,12)])
+```
+Para uma melhor visualização, algumas colunas/variaveis foram cortada da figura acima, contudo todo o conjunto de colunas/variaveis podem ser vistas abaixo:
+
+```{r}
+colnames(salariosTI)
+```
+
+Antes de se fazer uma análise mais aprofundada nos nossos dados, é de bom tom procurar por uma ou mais observações estranhas ou fora do padrão. Seguindo tal conceito, é possível notar que uma da observações apresenta uma comportamento um tanto peculiar à respeito da variável Salario Bruto. 
+
+```{r}
+plot(salariosTI$Salario.Bruto)
+```
+
+O gráfico acima apresenta todas as observações da variável "Salario.Bruto". É possível notar que a grande maioria dos dados esta dentro de um determinado "range", contudo existe uma observação que apresenta um comportamento bastante diferenciado, onde a mesma se encontra isolada na parte superior do gráfico. Tal observacao, esta ligada a algum profissional que tem um salário bruto maior do que R$40,000 reais. Por apresentar tal comportamento, essa observacão é chamada de "outlier".
+
+Um bom analista de dados deve ter cuidado com outlier's, pois dependo da pergunta que é feita ao seus conjunto de dados, os outlier's podem influenciar a sua resposta de uma maneira errônea. Assim sendo, é aconselhável usar estratégias que possam dimunuir ou eliminar a influência dessas observações.
+
+
+#Consultando os dados
+
+Com esses dados em mãos, nós podemos tentar responder algumas perguntas, como por exemplo:
+
+__Em qual estado e em qual região estão os melhores salários para profissionais de TI?__  
+  
+Resposta: Para responder esta pergunta, primeiro precisamos filtrar os dados por estados e para cada estado calculamos a mediana da variável "Salario.Bruto". Eu escolhi usar a mediana, porque a média nesse caso não seria uma medida representativa para o conjunto, pois a mesma é, facilmente, afetada por outlier's.
+
+```{r}
+estados <- levels(salariosTI$UF)
+estados_salario <- sapply(estados,function(estado){
+  salario_estado <- salariosTI[salariosTI$UF == estado,]
+  median(salario_estado$Salario.Bruto)
+}) 
+
+estados_salario <- as.data.frame(estados_salario)
+estados_salario <- cbind(Estados = rownames(estados_salario), estados_salario)
+colnames(estados_salario)<- c("Estados","Media_Salarial")
+estados_salario<-estados_salario[order(-estados_salario$Media_Salarial),]
+rownames(estados_salario) <- NULL
+plot(estados_salario$Media_Salarial,type = "h")
+```
+
+
+__Quão desiguais são os salários comparando quem ganha muito e pouco no Brasil como um todo? Há regiões mais desiguais?__
+
