@@ -2,7 +2,7 @@
 title: "Parte2 - Salário dos Profissionais de TI no Brasil"
 author: "Arthur Sena"
 date: "04/13/2015"
-output: html_document
+output: pdf_document
 ---
 
 #Descrição dos dados: 
@@ -12,7 +12,7 @@ Os dados foram coletados através de um formulário no google. Tais dados contem
 salariosTI <- read.csv("salarios-ti-refinado.csv")
 head(salariosTI[,c(2,3,4,6,12)])
 ```
-Para uma melhor visualização, algumas colunas/variaveis foram cortada da figura acima, contudo todo o conjunto de colunas/variaveis podem ser vistas abaixo:
+Para uma melhor visualização, algumas colunas/variáveis foram cortada da figura acima, contudo todo o conjunto de colunas/variaveis podem ser vistas abaixo:
 
 ```{r}
 colnames(salariosTI)
@@ -38,6 +38,7 @@ __Em qual estado e em qual região estão os melhores salários para profissiona
 Resposta: Para responder esta pergunta, primeiro precisamos filtrar os dados por estados e para cada estado calculamos a mediana da variável "Salario.Bruto". Eu escolhi usar a mediana, porque a média nesse caso não seria uma medida representativa para o conjunto, pois a mesma é, facilmente, afetada por outlier's.
 
 ```{r}
+#O código abaixo filtra e recupera a mediana dos salários por estados,onde por fim será gerado um gráfico de barras.
 estados <- levels(salariosTI$UF)
 estados_salario <- sapply(estados,function(estado){
   salario_estado <- salariosTI[salariosTI$UF == estado,]
@@ -49,9 +50,29 @@ estados_salario <- cbind(Estados = rownames(estados_salario), estados_salario)
 colnames(estados_salario)<- c("Estados","Media_Salarial")
 estados_salario<-estados_salario[order(-estados_salario$Media_Salarial),]
 rownames(estados_salario) <- NULL
-plot(estados_salario$Media_Salarial,type = "h")
+```
+
+![alt text](Salario_Estado.png)
+
+```{r}
+#O código abaixo filtra e recupera a mediana dos salários por regiões,onde por fim será gerado um gráfico de barras.
+
+regioes <- levels(salariosTI$Regiao)
+regioes_salarios <- sapply(regioes, function(regiao){
+   salario_regiao <- salariosTI[salariosTI$Regiao == regiao,]
+   median(salario_regiao$Salario.Bruto)
+ })
+
+regioes_salarios <- as.data.frame(regioes_salarios)
+regioes_salarios <- cbind(Estados = rownames(regioes_salarios), regioes_salarios)
+colnames(regioes_salarios)<- c("Regiao","Media_Salarial")
+regioes_salarios<-regioes_salarios[order(-regioes_salarios$Media_Salarial),]
+rownames(regioes_salarios) <- NULL
+barplot(regioes_salarios$Media_Salarial,names.arg = regioes_salarios$Regiao)
 ```
 
 
 __Quão desiguais são os salários comparando quem ganha muito e pouco no Brasil como um todo? Há regiões mais desiguais?__
+
+Resposta: Para responder tal pergunta, primeiros temos que tentar definir o que seria um salário alto. Assim sendo, poderíamos dizer que os salarios dos profissionais que recebem um valor acima do terceiro quartil entrariam dentro do conjunto de salario alto. Por sua vez, os salários que se encontram abaixo do terceiro quartil entram no conjunto de salario baixo.
 
