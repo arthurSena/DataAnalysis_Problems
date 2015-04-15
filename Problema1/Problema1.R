@@ -26,3 +26,27 @@ colnames(regioes_salarios)<- c("Regiao","Media_Salarial")
 regioes_salarios<-regioes_salarios[order(-regioes_salarios$Media_Salarial),]
 rownames(regioes_salarios) <- NULL
 
+regioes <- levels(salariosTI$Regiao)
+regioes_salariosAlto <- sapply(regioes, function(regiao){
+  salario_regiao <- salariosTI[salariosTI$Regiao == regiao,]
+  salario_regiao <- salario_regiao[salario_regiao$Salario.Bruto > quantile(salariosTI$Salario.Bruto,0.50),]
+  median(salario_regiao$Salario.Bruto)
+})
+
+regioes_salariosBaixo <- sapply(regioes, function(regiao){
+  salario_regiao <- salariosTI[salariosTI$Regiao == regiao,]
+  salario_regiao <- salario_regiao[salario_regiao$Salario.Bruto <= quantile(salariosTI$Salario.Bruto,0.50),]
+  median(salario_regiao$Salario.Bruto)
+})
+
+  
+regioes_salarioDiferenca <- regioes_salariosAlto - regioes_salariosBaixo
+
+regioes_salarioDiferenca <- as.data.frame(regioes_salarioDiferenca)
+regioes_salarioDiferenca <- cbind(Regioes = rownames(regioes_salarioDiferenca), regioes_salarioDiferenca)
+colnames(regioes_salarioDiferenca)<- c("Regiao","Diferenca")
+regioes_salarioDiferenca<-regioes_salarioDiferenca[order(-regioes_salarioDiferenca$Diferenca),]
+rownames(regioes_salarioDiferenca) <- NULL
+
+salarios_altos_baixos <- cbind(regioes_salariosAlto,regioes_salariosBaixo)
+barplot(t(salarios_altos_baixos),beside = TRUE,ylim = c(0,6000),main = "Diferenca entre Salários Altos e Baixos")

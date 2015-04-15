@@ -2,11 +2,11 @@
 title: "Parte2 - Salário dos Profissionais de TI no Brasil"
 author: "Arthur Sena"
 date: "04/13/2015"
-output: pdf_document
+output: html_document
 ---
 
 #Descrição dos dados: 
-Os dados foram coletados através de um formulário no google. Tais dados contem informações sobre o salário de algumas profissões de TI no Brasil, onde foram coletados 162 obervações com 12 variáveis cada. Na figura abaixo, é possivel visualizar uma pequena amostra dos dados.
+Os dados foram coletados através de um formulário no google. Tais dados contem informações sobre o salário e outras informações à respeito de algumas profissões de TI no Brasil. Ao todo foram coletados 162 obervações com 12 variáveis cada. Na figura abaixo, é possivel visualizar uma pequena amostra dos dados.
 
 ```{r}
 salariosTI <- read.csv("salarios-ti-refinado.csv")
@@ -74,5 +74,46 @@ barplot(regioes_salarios$Media_Salarial,names.arg = regioes_salarios$Regiao)
 
 __Quão desiguais são os salários comparando quem ganha muito e pouco no Brasil como um todo? Há regiões mais desiguais?__
 
-Resposta: Para responder tal pergunta, primeiros temos que tentar definir o que seria um salário alto. Assim sendo, poderíamos dizer que os salarios dos profissionais que recebem um valor acima do terceiro quartil entrariam dentro do conjunto de salario alto. Por sua vez, os salários que se encontram abaixo do terceiro quartil entram no conjunto de salario baixo.
+Resposta: Para responder tal pergunta, primeiros temos que tentar definir o que seria um salário alto e baixo no nosso conunto. Assim sendo, poderíamos dizer que os salarios dos profissionais que recebem um valor acima da mediana entrariam dentro do conjunto de salario alto. Por sua vez, os salários que se encontram abaixo da mediana entram no conjunto de salario baixo.
+
+```{r}
+#O código abaixo recupera a mediana do conjunto de salários altos e baixos do nosso conjunto por região.
+regioes <- levels(salariosTI$Regiao)
+regioes_salariosAlto <- sapply(regioes, function(regiao){
+  salario_regiao <- salariosTI[salariosTI$Regiao == regiao,]
+  salario_regiao <- salario_regiao[salario_regiao$Salario.Bruto > quantile(salariosTI$Salario.Bruto,0.50),]
+  median(salario_regiao$Salario.Bruto)
+})
+
+regioes_salariosBaixo <- sapply(regioes, function(regiao){
+  salario_regiao <- salariosTI[salariosTI$Regiao == regiao,]
+  salario_regiao <- salario_regiao[salario_regiao$Salario.Bruto <= quantile(salariosTI$Salario.Bruto,0.50),]
+  median(salario_regiao$Salario.Bruto)
+})
+
+head(regioes_salariosAlto)
+head(regioes_salariosBaixo)
+
+```
+Por mim, vamos organizar as informações obtidas em um gráfico de barras para melhor visualização e entendimento dos dados.
+
+```{r}
+salarios_altos_baixos <- cbind(regioes_salariosAlto,regioes_salariosBaixo)
+barplot(t(salarios_altos_baixos),beside = TRUE,ylim = c(0,6000),main = "Diferenca entre Salários Altos e Baixos",col=c("blue","red"),legend = c("Salario Alto","Salario Baixo"),args.legend = list(title = "Legenda", x = "topright", cex = .6,text.font = 200))
+```
+
+No gráfico acima, é possível notar que todas as regiões apresentam uma razoável diferença diferença entre os dois tipos de salários. Agora, vamos expressar essa diferença em um valor absoluto usando o resultado da subtração dos salários.
+
+```{r}
+regioes_salarioDiferenca <- regioes_salariosAlto - regioes_salariosBaixo
+regioes_salarioDiferenca <- as.data.frame(regioes_salarioDiferenca)
+regioes_salarioDiferenca <- cbind(Regioes = rownames(regioes_salarioDiferenca), regioes_salarioDiferenca)
+colnames(regioes_salarioDiferenca)<- c("Regiao","Diferenca")
+regioes_salarioDiferenca<-regioes_salarioDiferenca[order(-regioes_salarioDiferenca$Diferenca),]
+rownames(regioes_salarioDiferenca) <- NULL
+head(regioes_salarioDiferenca)
+```
+Em conclusão, podemos afirmar, que segundo os nossos dados, o Sudeste é a região que apresenta a maior diferença entre os salários. Contudo, os nossos dados apresentam uma quantidade de observações um tanto pequena e, algumas regiões apresentam um maior números de observações do que outras, o que muito provavelmente influencia nos resultados das nossas perguntas.   
+
+
 
