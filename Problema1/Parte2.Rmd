@@ -18,7 +18,7 @@ Para uma melhor visualização, algumas colunas/variáveis foram cortada da figu
 colnames(salariosTI)
 ```
 
-Antes de se fazer uma análise mais aprofundada nos nossos dados, é de bom tom procurar por uma ou mais observações estranhas ou fora do padrão. Seguindo tal conceito, é possível notar que uma da observações apresenta uma comportamento um tanto peculiar à respeito da variável Salario Bruto. 
+Antes de se fazer uma análise mais aprofundada nos nossos dados, é sempre de bom tom procurar por uma ou mais observações estranhas ou fora do padrão. Seguindo tal conceito, é possível notar que uma da observações apresenta uma comportamento um tanto peculiar à respeito da variável Salario Bruto. 
 
 ```{r}
 plot(salariosTI$Salario.Bruto)
