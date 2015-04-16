@@ -2,7 +2,7 @@
 title: "Parte2 - Salário dos Profissionais de TI no Brasil"
 author: "Arthur Sena"
 date: "04/13/2015"
-output: word_document
+output: html_document
 ---
 
 ```{r}
@@ -26,13 +26,12 @@ colnames(salariosTI)
 Antes de se fazer uma análise mais aprofundada nos nossos dados, é sempre de bom tom procurar por uma ou mais observações estranhas ou fora do padrão. Seguindo tal conceito, é possível notar que uma da observações apresenta uma comportamento um tanto peculiar à respeito da variável Salario Bruto. 
 
 ```{r}
-plot(salariosTI$Salario.Bruto)
+qplot(data = salariosTI, y = Salario.Bruto) 
 ```
 
 O gráfico acima apresenta todas as observações da variável "Salario.Bruto". É possível notar que a grande maioria dos dados esta dentro de um determinado "range", contudo existe uma observação que apresenta um comportamento bastante diferenciado, onde a mesma se encontra isolada na parte superior do gráfico. Tal observacao, esta ligada a algum profissional que tem um salário bruto maior do que R$40,000 reais. Por apresentar tal comportamento, essa observacão é chamada de "outlier".
 
-Um bom analista de dados deve ter cuidado com outlier's, pois dependo da pergunta que é feita ao seus conjunto de dados, os outlier's podem influenciar a sua resposta de uma maneira errônea. Assim sendo, é aconselhável usar estratégias que possam dimunuir ou eliminar a influência dessas observações.
-
+Um bom analista de dados deve ter cuidado com outlier's, pois dependo da pergunta que é feita ao seus conjunto de dados, os outlier's podem influenciar a sua resposta de uma maneira errônea. Assim sendo, é aconselhável usar estratégias que possam dimunuir ou eliminar a influência dessas observações. 
 
 #Consultando os dados
 
@@ -40,7 +39,7 @@ Com esses dados em mãos, nós podemos tentar responder algumas perguntas, como 
 
 __Em qual estado e em qual região estão os melhores salários para profissionais de TI?__  
   
-Resposta: Para responder esta pergunta, primeiro precisamos filtrar os dados por estados e para cada estado calculamos a mediana da variável "Salario.Bruto". Eu escolhi usar a mediana, porque a média nesse caso não seria uma medida representativa para o conjunto, pois a mesma é, facilmente, afetada por outlier's.
+Resposta: Para responder esta pergunta, primeiro precisamos filtrar os dados por estados e para cada estado calcular a mediana da variável "Salario.Bruto". Eu escolhi usar a mediana, porque a média nesse caso não seria uma medida representativa para o conjunto, pois a mesma é, facilmente, afetada por outlier's.
 
 ```{r}
 #O código abaixo filtra e recupera a mediana dos salários por estados,onde por fim será gerado um gráfico de barras.
@@ -52,12 +51,13 @@ estados_salario <- sapply(estados,function(estado){
 
 estados_salario <- as.data.frame(estados_salario)
 estados_salario <- cbind(Estados = rownames(estados_salario), estados_salario)
-colnames(estados_salario)<- c("Estados","Media_Salarial")
-estados_salario<-estados_salario[order(-estados_salario$Media_Salarial),]
+colnames(estados_salario)<- c("Estados","Mediana_Salarial")
+estados_salario<-estados_salario[order(-estados_salario$Mediana_Salarial),]
 rownames(estados_salario) <- NULL
+chart <- ggplot(estados_salario, aes(Estados,Mediana_Salarial))
+ordenar <- reorder(estados_salario$Estados,estados_salario$Mediana_Salarial)
+chart + geom_bar(stat = "identity",aes(ordenar))
 ```
-
-![alt text](Salario_Estado.png)
 
 ```{r}
 #O código abaixo filtra e recupera a mediana dos salários por regiões,onde por fim será gerado um gráfico de barras.
@@ -70,47 +70,52 @@ regioes_salarios <- sapply(regioes, function(regiao){
 
 regioes_salarios <- as.data.frame(regioes_salarios)
 regioes_salarios <- cbind(Estados = rownames(regioes_salarios), regioes_salarios)
-colnames(regioes_salarios)<- c("Regiao","Media_Salarial")
-regioes_salarios<-regioes_salarios[order(-regioes_salarios$Media_Salarial),]
+colnames(regioes_salarios)<- c("Regiao","Mediana_Salarial")
+regioes_salarios<-regioes_salarios[order(-regioes_salarios$Mediana_Salarial),]
 rownames(regioes_salarios) <- NULL
-barplot(regioes_salarios$Media_Salarial,names.arg = regioes_salarios$Regiao)
-ggplot(data = salariosTI, aes(x = Regiao,y = Salario.Bruto)) + 
-  geom_bar(data = regioes_salarios, aes(y = Media_Salarial), stat = "identity", fill = "white" ) + 
-  geom_jitter(size = 4, alpha = 0.5, colour = "blue", position = position_jitter(width = .15))  
+ggplot(data = regioes_salarios, aes(x = Regiao,y = Mediana_Salarial)) + geom_bar(stat = "identity")
 ```
-
+  
+Analisando os gráficos acima, podemos notar que a melhor mediana de salário por estado se encontram no estado do Rio de Janeiro. Por sua vez, a melhor mediana de salário por região se encontra no Centro-Oeste. 
 
 __Quão desiguais são os salários comparando quem ganha muito e pouco no Brasil como um todo? Há regiões mais desiguais?__
 
-Resposta: Para responder tal pergunta, primeiros temos que tentar definir o que seria um salário alto e baixo no nosso conjunto. Assim sendo, poderíamos dizer que os salarios dos profissionais que recebem um valor acima da mediana entrariam dentro do conjunto de salario alto. Por sua vez, os salários que se encontram abaixo da mediana entram no conjunto de salario baixo.
+Resposta: Para responder tal pergunta, primeiros temos que tentar definir o que seria um salário alto e baixo no nosso conjunto. Assim sendo, poderíamos dizer que os salarios dos profissionais que recebem um valor acima do terceiro quartil entrariam dentro do conjunto de salario alto. Por sua vez, os salários que se encontram abaixo do terceiro quartil entram no conjunto de salario baixo. 
+
+_SALARIO.ALTO = SALARIO.BRUTO > Terceiro.Quartil_  
+
+_SALARIO.BAIXO = SALARIO.BRUTO <= Terceiro.Quartil_
+
+Agora que definimos o conjunto de salários altos e baixos, nós podemos filtrar os salários altos e baixos por região.
 
 ```{r}
 #O código abaixo recupera a mediana do conjunto de salários altos e baixos do nosso conjunto por região.
 regioes <- levels(salariosTI$Regiao)
 regioes_salariosAlto <- sapply(regioes, function(regiao){
   salario_regiao <- salariosTI[salariosTI$Regiao == regiao,]
-  salario_regiao <- salario_regiao[salario_regiao$Salario.Bruto > quantile(salariosTI$Salario.Bruto,0.50),]
+  salario_regiao <- salario_regiao[salario_regiao$Salario.Bruto > quantile(salariosTI$Salario.Bruto,0.75),]
   median(salario_regiao$Salario.Bruto)
 })
 
 regioes_salariosBaixo <- sapply(regioes, function(regiao){
   salario_regiao <- salariosTI[salariosTI$Regiao == regiao,]
-  salario_regiao <- salario_regiao[salario_regiao$Salario.Bruto <= quantile(salariosTI$Salario.Bruto,0.50),]
+  salario_regiao <- salario_regiao[salario_regiao$Salario.Bruto <= quantile(salariosTI$Salario.Bruto,0.75),]
   median(salario_regiao$Salario.Bruto)
 })
-
 head(regioes_salariosAlto)
 head(regioes_salariosBaixo)
-
 ```
-Por mim, vamos organizar as informações obtidas em um gráfico de barras para melhor visualização e entendimento dos dados.
+
+Observando os dados acima, é possivel perceber que a região Norte apresenta sua mediana de salário alto como "Not available", o que no nosso contexto significa que nenhum salário da região Norte apresenta valor superior ao terceiro quartil. Isso pode ser atribuido ao fato de que há apenas duas observações em todo o conjunto que se refere a tal região. Assim sendo, devido a pouca falta de observações sobre ela, vamos remove-la do gráfico de comparação de salários de regiões que pode ser logo abaixo.
 
 ```{r}
+regioes_salariosAlto <- regioes_salariosAlto[-3]
+regioes_salariosBaixo <-regioes_salariosBaixo[-3]
 salarios_altos_baixos <- cbind(regioes_salariosAlto,regioes_salariosBaixo)
 barplot(t(salarios_altos_baixos),beside = TRUE,ylim = c(0,6000),main = "Diferenca entre Salários Altos e Baixos",col=c("blue","red"),legend = c("Salario Alto","Salario Baixo"),args.legend = list(title = "Legenda", x = "topright", cex = .6,text.font = 200))
 ```
 
-No gráfico acima, é possível notar que todas as regiões apresentam uma razoável diferença entre os dois tipos de salários. Agora, vamos expressar essa diferença em um valor absoluto usando o resultado da subtração dos salários.
+No gráfico acima, é possível notar que todas as regiões apresentam uma razoável diferença entre os dois tipos de salários. Agora, vamos expressar essa diferença em um valor absoluto usando o resultado da subtração da mediana dos salários.
 
 ```{r}
 regioes_salarioDiferenca <- regioes_salariosAlto - regioes_salariosBaixo
@@ -121,7 +126,7 @@ regioes_salarioDiferenca<-regioes_salarioDiferenca[order(-regioes_salarioDiferen
 rownames(regioes_salarioDiferenca) <- NULL
 head(regioes_salarioDiferenca)
 ```
-Em conclusão, podemos afirmar, que segundo os nossos dados, o Sudeste é a região que apresenta a maior diferença entre os salários. Contudo, os nossos dados apresentam uma quantidade de observações um tanto pequena e, algumas regiões apresentam um maior números de observações do que outras, o que muito provavelmente influencia nos resultados das nossas perguntas.   
+Em conclusão, podemos afirmar, que segundo os nossos dados, o Sudeste é a região que apresenta a maior diferença entre os salários. Contudo, os nossos dados apresentam uma quantidade de observações um tanto pequena e, algumas regiões apresentam um maior números de observações do que outras, o que muito provavelmente influencia nos resultados das nossas perguntas. Ou seja, para uma comparação mais completa e justa entre as regiões e estados, necessitaríamos de um conjunto de dados mais completo, e só assim poderíamos ter uma visão mais real e justa sobre as consultas realizadas sobre os dados.    
 
 
 
