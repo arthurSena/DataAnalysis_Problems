@@ -2,7 +2,7 @@
 title: "Problema2 - Parte2"
 author: "Arthur Sena"
 date: "05/01/2015"
-output: word_document
+output: pdf_document
 ---
 ```{r}
 library(ggplot2, quietly = T, warn.conflicts = F)
@@ -121,47 +121,3 @@ ggplot(data.frame(amostras_media), aes(amostras_media)) + geom_histogram(binwidt
 
 Podemos observar que à medida que aumentamos o número de amostras a forma da nossa distribuição se aproxima cada vez mais da forma de uma distribuição normal. 
 
-#Intervalos de Confiança
-Outro conceito interessante, e que vale ser mencionado nessa análise, é o conceito de Intervalos de Confiança, no qual se destinam a mensurar um intervalo, relativo a média de cada amostra, onde a média da população se encontra. Ou seja, se eu tenho uma amostra com média X, então eu posso determinar um intervalo relativo à X, no qual a média da população pode estar inserida. Esse intervalo será determinado pode ser definido como: __(X - Erro, X + Erro)__.Onde, o erro será definido pela fórmula:    
-                       $$ dp = desvioPadrao(amostra)$$
-                        $$Erro = 1.96*dp/raizQuadrada(amostraTamanho)$$        
-                        
-
-Assim sendo, podemos definir um intervalo de confiança para cada amostra coletada anteriormente e visualizar tais intervalos em um gráfico.
-
-```{r}
-     
-    dist_original <-(servicosPostais_gastos$vlrLiquido)
-    amostra_tamanho <- 2500
-    num_amostras <- 100
-    pop_mean <- mean(dist_original)
-
-    calcula_intervalo <- function(amostra,tamanhoAmostra){
-      temp <- as.data.frame(amostra)
-      se <- sd(temp[,1])/sqrt(tamanhoAmostra)
-      inferior <- mean(amostra) - (1.96*se)
-      superior <- mean(amostra) + (1.96*se)
-      list("mean"=mean(amostra) , "lower"=inferior,"upper"=superior)
-      }
-
-    sample_cis <- data.frame(upper = c(), mean = c(), lower = c())
-    for(i in seq(1, num_amostras)){
-          a_sample <- sample(dist_original, amostra_tamanho)
-          interval <-  calcula_intervalo(a_sample,  amostra_tamanho)
-          sample_cis <- rbind(sample_cis, data.frame(mean = interval["mean"], lower = interval["lower"],upper = interval["upper"]))
-  }
-    sample_cis <- sample_cis %>% mutate(contains_pop_mean = (upper >= pop_mean & lower <= pop_mean)) 
-
-    ggplot(sample_cis, aes(x = 1:nrow(sample_cis), y = mean, colour = contains_pop_mean)) + 
-     geom_point() + 
-      geom_errorbar(aes(ymin = lower, ymax = upper)) + 
-#          geom_hline(aes(yintercept=mean(mean(dist_original)))) + 
-  geom_hline(aes(yintercept=pop_mean)) + 
-             theme_bw()
-  
-```
-
-Cada ponto azul e vermelho acima representa o valor da média da amostra, onde as barras acima e abaixo dos pontos representa a extensão dos seus, respectivos, intervalos de confiança. Os pontos e barras vermelhos são aqueles no qual a média da população não se encontra inserida nos seus intervalos. A barra preta desenhada horizontalmente representa a média da população. 
-
-Eu calculei os intervalos com um nível de confiança de 95%, ou seja, a probabilidade de que , com várias repetições, os intervalos conterão o verdadeiro valor do parâmetro. O que é facilmente observado no gráfico, pois apenas seis intervalos não contiveram a média da população. É importante notar que as margens de erros dos intervalos são inversamente proporcionais ao tamanho das amostras, ou seja, quanto maior o tamanho menor a margem de erro.
- 
