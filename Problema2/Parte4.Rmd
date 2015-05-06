@@ -1,0 +1,61 @@
+---
+title: "Parte4"
+author: "Arthur Sena"
+date: "06/05/2015"
+output: pdf_document
+---
+
+
+#Descrição dos dados: 
+
+
+
+
+#Analisando os dados
+
+__1) Distribuição de acertos por questões.__
+
+
+```{r}
+
+ calcula_intervalo <- function(amostra,tamanhoAmostra){
+      temp <- as.data.frame(amostra)
+      se <- sd(temp[,1])/sqrt(tamanhoAmostra)
+      inferior <- mean(amostra) - (1.96*se)
+      superior <- mean(amostra) + (1.96*se)
+      list("mean"=mean(amostra) , "lower"=inferior,"upper"=superior)
+      }
+
+
+  students <- read.table("students.data",header = T)
+  questions <- levels(students$question)
+  question_media <-sapply(questions,function(question){
+  questao_media <- students[students$question == question,]
+  mean(questao_media$attempt)})
+
+  temp <- students %>% group_by(question) %>% summarise_each(funs(mean),attempt)
+   
+  temp2 <- students %>% group_by(question) 
+  summarise_each(temp2,funs(length))
+
+
+ sample_cis <- data.frame(upper = c(), mean = c(), lower = c())
+#     for(i in seq(1, num_amostras)){
+#           a_sample <- sample(dist_original, amostra_tamanho)
+
+
+          interval <-  calcula_intervalo(a_sample,  amostra_tamanho)
+          sample_cis <- rbind(sample_cis, data.frame(mean = interval["mean"], lower = interval["lower"],upper = interval["upper"]))
+#   }
+    sample_cis <- sample_cis %>% mutate(contains_pop_mean = (upper >= pop_mean & lower <= pop_mean)) 
+
+    ggplot(sample_cis, aes(x = 1:nrow(sample_cis), y = mean, colour = contains_pop_mean)) + 
+     geom_point() + 
+      geom_errorbar(aes(ymin = lower, ymax = upper)) + 
+#          geom_hline(aes(yintercept=mean(mean(dist_original)))) + 
+  geom_hline(aes(yintercept=pop_mean)) + 
+             theme_bw()
+  
+
+```
+
