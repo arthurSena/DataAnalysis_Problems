@@ -2,8 +2,12 @@
 title: "Parte4"
 author: "Arthur Sena"
 date: "06/05/2015"
-output: pdf_document
+output: html_document
 ---
+```{r}
+library(ggplot2, quietly = T, warn.conflicts = F)
+library(dplyr, quietly = T, warn.conflicts = F)
+```
 
 
 #Descrição dos dados: 
@@ -13,49 +17,95 @@ output: pdf_document
 
 #Analisando os dados
 
-__1) Distribuição de acertos por questões.__
+__1) Qual a distribuição da média de tentativas que resultaram em acerto por questão ?.__
+
+A fim de responder essa pergunta, eu agrupei os nossos dados por questão e para cada grupo de questão eu calculei a média de tentativas que resultaram em acerto, ou seja, descobrir qual o número da tentativa que, em média, ocorre a maior parte dos acertos. Após isso, eu calculei o intervalo de confiança com 95% para as médias que obtive e construi um gráfico para uma melhor visualização desses intervalos.
 
 
 ```{r}
 
- calcula_intervalo <- function(amostra,tamanhoAmostra){
-      temp <- as.data.frame(amostra)
-      se <- sd(temp[,1])/sqrt(tamanhoAmostra)
-      inferior <- mean(amostra) - (1.96*se)
-      superior <- mean(amostra) + (1.96*se)
-      list("mean"=mean(amostra) , "lower"=inferior,"upper"=superior)
-      }
-
-
-  students <- read.table("students.data",header = T)
-  questions <- levels(students$question)
-  question_media <-sapply(questions,function(question){
-  questao_media <- students[students$question == question,]
-  mean(questao_media$attempt)})
-
-  temp <- students %>% group_by(question) %>% summarise_each(funs(mean),attempt)
-   
-  temp2 <- students %>% group_by(question) 
-  summarise_each(temp2,funs(length))
-
-
- sample_cis <- data.frame(upper = c(), mean = c(), lower = c())
-#     for(i in seq(1, num_amostras)){
-#           a_sample <- sample(dist_original, amostra_tamanho)
-
-
-          interval <-  calcula_intervalo(a_sample,  amostra_tamanho)
-          sample_cis <- rbind(sample_cis, data.frame(mean = interval["mean"], lower = interval["lower"],upper = interval["upper"]))
-#   }
-    sample_cis <- sample_cis %>% mutate(contains_pop_mean = (upper >= pop_mean & lower <= pop_mean)) 
-
-    ggplot(sample_cis, aes(x = 1:nrow(sample_cis), y = mean, colour = contains_pop_mean)) + 
-     geom_point() + 
-      geom_errorbar(aes(ymin = lower, ymax = upper)) + 
-#          geom_hline(aes(yintercept=mean(mean(dist_original)))) + 
-  geom_hline(aes(yintercept=pop_mean)) + 
-             theme_bw()
+   calcula_intervalo_95 <- function(amostra,tamanhoAmostra){
+        se <- sd(amostra[,3])/sqrt(tamanhoAmostra)
+        inferior <- mean(amostra$attempt) - (1.96*se)
+        superior <- mean(amostra$attempt) + (1.96*se)
+        list("mean"=mean(amostra$attempt) , "lower"=inferior,"upper"=superior,questao=amostra[1,2])
+    }
   
+    students <- read.table("students.data",header = T)
+    students  <- students[students$result == "True",]
+    questions <- levels(students$question)
+   sample_cis <- data.frame(upper = c(), mean = c(), lower = c(), questao=c())
+      for(i in seq(1, length(questions))){
+            a_sample <- students[students$question == questions[i],]
+            if (nrow(a_sample) > 1 ){
+                interval <- calcula_intervalo_95(a_sample, length(a_sample))
+                sample_cis <- rbind(sample_cis, data.frame(mean = interval["mean"], lower = interval["lower"],upper = interval["upper"], questao=interval["questao"]))  
+            }
+            
+    }
+    
+      sample_cis_temp1 <- sample_cis[1:50,]
+       
+      sample_cis_temp2 <- sample_cis[51:100,]
+
+      sample_cis_temp3 <- sample_cis[101:150,]
+
+     sample_cis_temp4 <- sample_cis[151:200,]
+       
+      sample_cis_temp5 <- sample_cis[201:250,]
+
+      sample_cis_temp6 <- sample_cis[251:300,]
+
+      sample_cis_temp7 <- sample_cis[301:350,]
+
+      sample_cis_temp8 <- sample_cis[351:393,]
+       
+      ggplot(sample_cis_temp1, aes(x =  sample_cis_temp1$questao, y = mean)) + 
+       geom_point() + 
+        geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+      ggplot(sample_cis_temp2, aes(x =  sample_cis_temp2$questao, y = mean)) + 
+       geom_point() + 
+        geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+      ggplot(sample_cis_temp3, aes(x =  sample_cis_temp3$questao, y = mean)) + 
+       geom_point() + geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+ggplot(sample_cis_temp4, aes(x =  sample_cis_temp4$questao, y = mean)) + 
+       geom_point() + geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+ggplot(sample_cis_temp5, aes(x =  sample_cis_temp5$questao, y = mean)) + 
+       geom_point() + geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+
+ggplot(sample_cis_temp6, aes(x =  sample_cis_temp6$questao, y = mean)) + 
+       geom_point() + geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+
+ggplot(sample_cis_temp7, aes(x =  sample_cis_temp7$questao, y = mean)) + 
+       geom_point() + geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+ggplot(sample_cis_temp8, aes(x =  sample_cis_temp8$questao, y = mean)) + 
+       geom_point() + geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+
+```
+Visualizando os gráficos, podemos notar que alguns intervalos apresentam um intervalo muito grande, isso ocorre, porque o tamanho da amostra é inversamente proporcional ao tamanho do intervalo. Assim sendo, nesses casos o tamanho da amostra é muito reduzido e a imprecisão é muito alta.
+
+
+
+
+```{r}
+
+    students <- read.table("students.data",header = T)                
+    nova_data <- strptime(students[,1],format='%Y%m%d%H%M%S')
+    horas <- as.data.frame(as.numeric(format(nova_data[,1], "%H")))
+    colnames(horas)<- c("Horas")
+    tarde <- filter(horas,Horas>=12 & Horas <18)
+    manha <- filter(horas,Horas>=6 & Horas <12)
+    noite <- filter(horas,Horas>=18 & Horas <=23)
+    madrugada <- filter(horas, Horas>=0 & Horas <=5)
+     
 
 ```
 
