@@ -2,7 +2,7 @@
 title: "Parte4"
 author: "Arthur Sena"
 date: "06/05/2015"
-output: html_document
+output: pdf_document
 ---
 ```{r}
 library(ggplot2, quietly = T, warn.conflicts = F)
@@ -12,15 +12,20 @@ library(dplyr, quietly = T, warn.conflicts = F)
 
 #Descrição dos dados: 
 
+Os dados utilizados nessa análise foram reunidos à partir das submissões dos alunos da disciplina de "Programação 1" do curso de Ciência da Computação na UFCG. Onde, foi coletado as submissões de todos os aluno durante o período letivo 2014.2. No total, há 15148 submissões de 101 alunos para 427 questões. Abaixo, é possível visualizar uma pequena parte amostra dos nossos dados.
 
+```{r}
+     students <- read.table("students.data",header = T)
+      head(students)
+```
 
+Cada linha representa a submissão de um aluno para uma determinada questão. As variáveis são, respectivamente: timestamp da submissão, o identificador da questão, o número atual de tentativas do aluno para aquela questão (zero significa que o aluno acessou a questão), o  resultado dos testes e o identificador do aluno. 
 
 #Analisando os dados
 
-__1) Qual a distribuição da média de tentativas que resultaram em acerto por questão ?.__
+__1) Qual o intervalo de confiança da média de tentativas das questões com mais submissões ?.__
 
 A fim de responder essa pergunta, eu agrupei os nossos dados por questão e para cada grupo de questão eu calculei a média de tentativas que resultaram em acerto, ou seja, descobrir qual o número da tentativa que, em média, ocorre a maior parte dos acertos. Após isso, eu calculei o intervalo de confiança com 95% para as médias que obtive e construi um gráfico para uma melhor visualização desses intervalos.
-
 
 ```{r}
 
@@ -32,80 +37,73 @@ A fim de responder essa pergunta, eu agrupei os nossos dados por questão e para
     }
   
     students <- read.table("students.data",header = T)
-    students  <- students[students$result == "True",]
     questions <- levels(students$question)
    sample_cis <- data.frame(upper = c(), mean = c(), lower = c(), questao=c())
       for(i in seq(1, length(questions))){
             a_sample <- students[students$question == questions[i],]
-            if (nrow(a_sample) > 1 ){
+              if (nrow(a_sample) > 1 ){
                 interval <- calcula_intervalo_95(a_sample, length(a_sample))
                 sample_cis <- rbind(sample_cis, data.frame(mean = interval["mean"], lower = interval["lower"],upper = interval["upper"], questao=interval["questao"]))  
             }
             
     }
-    
-      sample_cis_temp1 <- sample_cis[1:50,]
-       
-      sample_cis_temp2 <- sample_cis[51:100,]
 
-      sample_cis_temp3 <- sample_cis[101:150,]
+     sample_cis<-sample_cis[order(-sample_cis$mean),]
+     sample_cis_temp1 <- sample_cis[1:10,]
 
-     sample_cis_temp4 <- sample_cis[151:200,]
-       
-      sample_cis_temp5 <- sample_cis[201:250,]
-
-      sample_cis_temp6 <- sample_cis[251:300,]
-
-      sample_cis_temp7 <- sample_cis[301:350,]
-
-      sample_cis_temp8 <- sample_cis[351:393,]
-       
-      ggplot(sample_cis_temp1, aes(x =  sample_cis_temp1$questao, y = mean)) + 
+     ggplot(sample_cis_temp1, aes(x =  sample_cis_temp1$questao, y = mean),width = 2) + 
        geom_point() + 
         geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
-
-      ggplot(sample_cis_temp2, aes(x =  sample_cis_temp2$questao, y = mean)) + 
-       geom_point() + 
-        geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
-
-      ggplot(sample_cis_temp3, aes(x =  sample_cis_temp3$questao, y = mean)) + 
-       geom_point() + geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
-
-ggplot(sample_cis_temp4, aes(x =  sample_cis_temp4$questao, y = mean)) + 
-       geom_point() + geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
-
-ggplot(sample_cis_temp5, aes(x =  sample_cis_temp5$questao, y = mean)) + 
-       geom_point() + geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
-
-
-ggplot(sample_cis_temp6, aes(x =  sample_cis_temp6$questao, y = mean)) + 
-       geom_point() + geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
-
-
-ggplot(sample_cis_temp7, aes(x =  sample_cis_temp7$questao, y = mean)) + 
-       geom_point() + geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
-
-ggplot(sample_cis_temp8, aes(x =  sample_cis_temp8$questao, y = mean)) + 
-       geom_point() + geom_errorbar(aes(ymin = lower, ymax = upper)) +  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
-
-
 ```
-Visualizando os gráficos, podemos notar que alguns intervalos apresentam um intervalo muito grande, isso ocorre, porque o tamanho da amostra é inversamente proporcional ao tamanho do intervalo. Assim sendo, nesses casos o tamanho da amostra é muito reduzido e a imprecisão é muito alta.
+
+Visualizando os gráficos, podemos notar que alguns intervalos apresentam um intervalo muito grande, isso ocorre, porque o tamanho da amostra é inversamente proporcional ao tamanho do intervalo. Assim sendo, nesses casos o tamanho da amostra é muito reduzido e a imprecisão é muito alta. Outra observação interessante é à respeito da sobreposição dos intervalos, ou seja, a média das questões, aparentemente, não apresenta uma
 
 
+__2) Qual o turno do dia(manhã,tarde, noite e madrugada) que ocorre uma maior frequência de submissões ?__
 
+Para responder essa pergunta, precisamos criar uma nova variável na tabela chamda Turno, na qual apresentará o turno do dia 
+em que aquela submissão ocorreu. Após isso, calculamos a média de submissões por turno e o seu, respectivo, intervalo de confiança.
 
 ```{r}
 
-    students <- read.table("students.data",header = T)                
-    nova_data <- strptime(students[,1],format='%Y%m%d%H%M%S')
-    horas <- as.data.frame(as.numeric(format(nova_data[,1], "%H")))
-    colnames(horas)<- c("Horas")
-    tarde <- filter(horas,Horas>=12 & Horas <18)
-    manha <- filter(horas,Horas>=6 & Horas <12)
-    noite <- filter(horas,Horas>=18 & Horas <=23)
-    madrugada <- filter(horas, Horas>=0 & Horas <=5)
-     
+    students <- read.table("students.data",header = T)      
+
+    #Criando a nova coluna
+    students$Turno <- ""
+ 
+    #Preenchendo a nova coluna à partir do horário que a submissão ocorreu
+    for (i in seq(1,nrow(students))){
+      data <- strptime(students[i,1],format='%Y%m%d%H%M%S')
+      horas <- as.numeric(format(as.data.frame(data)[1],"%H"))
+      if (horas >= 12 & horas < 18){
+            students[i,6] = "tarde" 
+      }
+      else if(horas>=6 & horas <12){
+        students[i,6] = "manha" 
+      }
+      else if (horas>=18 & horas <=23){
+        students[i,6] = "noite" 
+      }
+      else{
+        students[i,6] = "madrugada" 
+      }
+    }
+
+   #Criando o gráfico
+ggplot(students, aes(x = Turno, y = attempt)) + 
+  stat_summary(fun.y = mean, geom = "point") + 
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", colour = "blue", width = 0.2)
 
 ```
+
+Visualizando o gráfico acima, podemos fazer algumas observações interessantes sobre a nossa amostra:
+
+1)O intervalo de confiança do turno da madrugada é muito grande, o que indica um tamanho pequeno de amostra.
+
+2)O intervalo de confiança do turno da manhã é pequeno, o que indica um tamanho grande de amostra.
+
+3)Não é possível afirmar qual turno ocorre mais submissões entre Tarde e Noite, pois ambos intervalos se sobrepõem mais que um quarto.
+
+4)Com 95% de confiança, é possível dizer que ocorre uma maior média de submissões no turno da manhã.
+
 
