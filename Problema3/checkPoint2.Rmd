@@ -1,0 +1,38 @@
+---
+title: "CheckPoint2"
+author: "Arthur Sena"
+date: "05/11/2015"
+output: pdf_document
+---
+
+```{r}
+library(ggplot2, quietly = T, warn.conflicts = F)
+library(dplyr, quietly = T, warn.conflicts = F)
+salarios <- read.csv("salarios-ti-refinado.csv")
+
+Norte_Nord <- filter(salarios, Regiao == "Norte" | Regiao == "Nordeste")
+
+Sudeste_Sul_CO<- filter(salarios, Regiao == "Centro-oeste" | Regiao == "Sudeste" | Regiao == "Sul")
+
+t.test(Sudeste_Sul_CO$Salario.Bruto,Norte_Nord$Salario.Bruto, alternative="greater")
+t.test(Norte_Nord$Salario.Bruto,Sudeste_Sul_CO$Salario.Bruto, alternative="greater")
+```
+
+
+```{r}
+
+        gols<-read.csv("camp brasileiro 2013 - dados processados copy.csv")
+        gols <- filter(gols,tempo_gol != "None")
+        gols$tempo_gol <- as.numeric(gols$tempo_gol)
+
+        tempo1 <- filter(gols,tempo_gol <= 45)
+        tempo2 <- filter(gols,tempo_gol > 45)
+        tempo2$tempo_gol <- tempo2$tempo_gol - 45
+ 
+        t.test(tempo1$tempo_gol,tempo2$tempo_gol, alternative="less")
+
+
+
+
+```
+
