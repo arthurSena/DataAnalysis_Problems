@@ -2,21 +2,26 @@
 title: "CheckPoint2"
 author: "Arthur Sena"
 date: "05/11/2015"
-output: pdf_document
+output: word_document
 ---
 
 ```{r}
-library(ggplot2, quietly = T, warn.conflicts = F)
-library(dplyr, quietly = T, warn.conflicts = F)
-salarios <- read.csv("salarios-ti-refinado.csv")
-
-Norte_Nord <- filter(salarios, Regiao == "Norte" | Regiao == "Nordeste")
-
-Sudeste_Sul_CO<- filter(salarios, Regiao == "Centro-oeste" | Regiao == "Sudeste" | Regiao == "Sul")
-
-t.test(Sudeste_Sul_CO$Salario.Bruto,Norte_Nord$Salario.Bruto, alternative="greater")
-t.test(Norte_Nord$Salario.Bruto,Sudeste_Sul_CO$Salario.Bruto, alternative="greater")
+  library(ggplot2, quietly = T, warn.conflicts = F)
+  library(dplyr, quietly = T, warn.conflicts = F)
 ```
+
+
+#Descrição dos Dados
+
+
+#Análise dos Dados
+
+Com os dados em mãos, nós podemos fazer algumas perguntas interessantes, como por exemplo: Existe diferença significativa entre o momento em que o gol acontece no 1o e 2o tempo das partidas, considerando o minuto do 1o ou 2o tempo em que ele acontece?
+
+Para responder essa pergunta, nós precisamos dividir os gols entre os que ocorreram no primeiro tempo e os que ocorreram no segundo tempo do jogo. Feito isso, podemos aplicar um teste de hipótese no qual minhas hipóteses seriam:
+
+__Hipótese Nula:__ Não existe diferença significativa, ou seja, a média dos gols são iguais nos dois tempos 
+__Hipótese Alternativa:__Existe uma diferença significativa entre a média dos gols
 
 
 ```{r}
@@ -29,10 +34,22 @@ t.test(Norte_Nord$Salario.Bruto,Sudeste_Sul_CO$Salario.Bruto, alternative="great
         tempo2 <- filter(gols,tempo_gol > 45)
         tempo2$tempo_gol <- tempo2$tempo_gol - 45
  
-        t.test(tempo1$tempo_gol,tempo2$tempo_gol, alternative="less")
-
-
-
+        t.test(tempo1$tempo_gol,tempo2$tempo_gol)
 
 ```
+
+Observando o valor do "p-value", o qual se refere ao valor da probabilidade de refutar a hipótese nula. Se o "p-value" apresentar um valor menor que o alfa, onde nesse caso é 5%, nós podemos refutar a hiótese nula. Caso contrário, não podemos refutá-la. No nosso caso, podemos notar que o valor do "p-value" é maior que o alfa, ou seja, não podemos refutar a hipótese nula. Outra informação valiosa é o intervalo de confiança da diferença das médias, onde obtemos um intervalo entre [-2.7279333, 0.6902483]. Observando esse intervalo podemos perceber que o valor zero se encontra incluindo nele, ou seja, com 95% de confiança dizemos que não existe uma diferença significativa entre as médias dos gols nois dois tempos.
+
+__Utilizando o "Wilcoxon test"__ nós podemos refazer o experimento anterior utilizando as mesmas hipótese, mas usando a mediana como parâmetro.
+
+```{r}
+      wilcox.test(tempo1$tempo_gol,tempo2$tempo_gol)
+```
+
+Mais uma vez notamos que o valor do "p-value" é maior que 5% (alfa), ou seja, continumaos não podendo refutar a hipótese nula.
+
+Após calcularmos os resultados dos testes de hipóteses com os Intervalos de Confiança podemos concluir que as duas técnicas se auto complementam, no sentido que sem o IC eu não consigo afirmar o tamanho da diferença das médias, caso exista tal diferença. Com o mesmo raciocinio, podemos dizer que sem o teste de hipóteses não temos o valor do p-value, ou seja, não tenho a probabilidade de rejeitar a hipótese nula.
+
+
+
 
