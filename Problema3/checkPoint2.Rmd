@@ -2,7 +2,7 @@
 title: "CheckPoint2"
 author: "Arthur Sena"
 date: "05/11/2015"
-output: word_document
+output: html_document
 ---
 
 ```{r}
@@ -12,7 +12,27 @@ output: word_document
 
 
 #Descrição dos Dados
+Os nossos dados são referentes aos gols do campeonato brasileiro de 2013. Onde, no total, nós temos um conjunto com 973 observações cada uma com 7 colunas/variáveis. Uma pequena amostra dos dados pode ser visualizada logo abaixo:
 
+```{r}
+     gols<-read.csv("camp brasileiro 2013 - dados processados copy.csv")
+     head(gols)
+```
+
+Os dados acima apresentam uma columa de "tempo_gol", na qual representa o minuto em que um determinado gol ocorreu naquele jogo. Para efeito de melhor visualização e entendimento dos dados, nós podemos criar um histograma com a frequência de gols em cada tempo do jogo.
+
+```{r}
+        gols <- filter(gols,tempo_gol != "None")
+        gols$tempo_gol <- as.numeric(gols$tempo_gol)
+
+        tempo1 <- filter(gols,tempo_gol <= 45)
+        tempo2 <- filter(gols,tempo_gol > 45)
+        tempo2$tempo_gol <- tempo2$tempo_gol - 45
+
+        qplot(data = gols, tempo_gol, geom = "histogram")+ggtitle("Frequencia dos gols")
+```
+
+Podemos observar que o histograma se encontra em uma forma uniforme, onde não é possível reparar em algum intervalo de tempo que se sobressai em relação aos outros.
 
 #Análise dos Dados
 
@@ -20,8 +40,8 @@ Com os dados em mãos, nós podemos fazer algumas perguntas interessantes, como 
 
 Para responder essa pergunta, nós precisamos dividir os gols entre os que ocorreram no primeiro tempo e os que ocorreram no segundo tempo do jogo. Feito isso, podemos aplicar um teste de hipótese no qual minhas hipóteses seriam:
 
-__Hipótese Nula:__ Não existe diferença significativa, ou seja, a média dos gols são iguais nos dois tempos 
-__Hipótese Alternativa:__Existe uma diferença significativa entre a média dos gols
+__Hipótese Nula:__ Não existe diferença significativa entre a média dos gols.   
+__Hipótese Alternativa:__ Existe uma diferença significativa entre a média dos gols.
 
 
 ```{r}
@@ -38,7 +58,7 @@ __Hipótese Alternativa:__Existe uma diferença significativa entre a média dos
 
 ```
 
-Observando o valor do "p-value", o qual se refere ao valor da probabilidade de refutar a hipótese nula. Se o "p-value" apresentar um valor menor que o alfa, onde nesse caso é 5%, nós podemos refutar a hiótese nula. Caso contrário, não podemos refutá-la. No nosso caso, podemos notar que o valor do "p-value" é maior que o alfa, ou seja, não podemos refutar a hipótese nula. Outra informação valiosa é o intervalo de confiança da diferença das médias, onde obtemos um intervalo entre [-2.7279333, 0.6902483]. Observando esse intervalo podemos perceber que o valor zero se encontra incluindo nele, ou seja, com 95% de confiança dizemos que não existe uma diferença significativa entre as médias dos gols nois dois tempos.
+Observando o valor do "p-value", o qual se refere ao valor da probabilidade de refutar a hipótese nula. Se o "p-value" apresentar um valor menor que o alfa, onde nesse caso é 5%, nós podemos refutar a hiótese nula. Caso contrário, não podemos refutá-la. No nosso caso, podemos notar que o valor do "p-value" é maior que o alfa, ou seja, não podemos refutar a hipótese nula. Outra informação valiosa é o intervalo de confiança da diferença das médias, onde obtemos um intervalo entre [-2.7279333, 0.6902483]. Observando esse intervalo podemos perceber que o valor zero se encontra incluindo nele, ou seja, com 95% de confiança dizemos que não existe uma diferença significativa entre as médias dos gols nos dois tempos.
 
 __Utilizando o "Wilcoxon test"__ nós podemos refazer o experimento anterior utilizando as mesmas hipótese, mas usando a mediana como parâmetro.
 
@@ -46,9 +66,34 @@ __Utilizando o "Wilcoxon test"__ nós podemos refazer o experimento anterior uti
       wilcox.test(tempo1$tempo_gol,tempo2$tempo_gol)
 ```
 
-Mais uma vez notamos que o valor do "p-value" é maior que 5% (alfa), ou seja, continumaos não podendo refutar a hipótese nula.
+Mais uma vez notamos que o valor do "p-value" é maior que 5% (alfa), ou seja, continuamos não podendo refutar a hipótese nula.
 
 Após calcularmos os resultados dos testes de hipóteses com os Intervalos de Confiança podemos concluir que as duas técnicas se auto complementam, no sentido que sem o IC eu não consigo afirmar o tamanho da diferença das médias, caso exista tal diferença. Com o mesmo raciocinio, podemos dizer que sem o teste de hipóteses não temos o valor do p-value, ou seja, não tenho a probabilidade de rejeitar a hipótese nula.
+
+Assim sendo, poderíamos concluir dizendo que as duas técnias permitem chegar na mesma conclusão, por exemplo, o gráfico abaixo representa o intervalo de confiança das médias dos gols no primeiro e segundo tempo. Observando tal gráfico, é facilmente notado que tais intervalos, praticamente, sobrepõem um ao outro. Ou seja, não podemos dizer que exista uma diferença significativa entre eles com 95% de confiança.
+
+```{r}
+
+        gols<-read.csv("camp brasileiro 2013 - dados processados copy.csv")
+        gols <- filter(gols,tempo_gol != "None")
+        gols$tempo_gol <- as.numeric(gols$tempo_gol)
+
+        gols$tempo_jogo <- 0
+
+         for (i in seq(1,nrow(gols))){
+           if (gols[i,4] > 45){
+             gols[i,8] <- 2
+             gols[i,4] <- gols[i,4] - 45
+           }
+           else{
+             gols[i,8] <- 1
+           }
+         }
+
+        ggplot(gols, aes(x = tempo_jogo, y = tempo_gol)) + 
+          stat_summary(fun.y = mean, geom = "point") + 
+          stat_summary(fun.data = mean_cl_normal, geom = "errorbar", colour = "blue",) + ggtitle("Intervalos de Confiança")
+```
 
 
 
