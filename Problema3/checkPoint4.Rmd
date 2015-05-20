@@ -1,0 +1,157 @@
+---
+title: "Problema3-checkPoint4"
+author: "Arthur Sena"
+date: "20-05-2015"
+output: word_document
+---
+
+```{r}
+  library(ggplot2, quietly = T, warn.conflicts = F)
+  library(dplyr, quietly = T, warn.conflicts = F)
+```
+
+
+#Descrição dos Dados
+Os nossos dados são referentes aos gols do campeonato brasileiro de 2013. Onde, no total, nós temos um conjunto com 973 observações cada uma com 7 colunas/variáveis. Uma pequena amostra dos dados pode ser visualizada logo abaixo:
+
+```{r}
+     gols<-read.csv("camp brasileiro 2013 - dados processados copy.csv")
+     head(gols)
+```
+
+Os dados acima apresentam uma columa de "tempo_gol", na qual representa o minuto em que um determinado gol ocorreu naquele jogo. Para efeito de melhor visualização e entendimento dos dados, nós podemos criar um histograma com a frequência de gols em cada tempo do jogo.
+
+```{r}
+        gols <- filter(gols,tempo_gol != "None")
+        gols$tempo_gol <- as.numeric(gols$tempo_gol)
+
+        tempo1 <- filter(gols,tempo_gol <= 45)
+        tempo2 <- filter(gols,tempo_gol > 45)
+        tempo2$tempo_gol <- tempo2$tempo_gol - 45
+
+        qplot(data = gols, tempo_gol, geom = "histogram")+ggtitle("Frequencia dos gols")
+```
+
+Podemos observar que o histograma se encontra em uma forma uniforme, onde não é possível reparar em algum intervalo de tempo que se sobressai em relação aos outros.
+
+#Análise dos Dados
+
+Com esses dados em mãos podemos tentar responder algumas perguntas interessantes, como por exemplo:
+
+__1)Existe uma diferença significativa entre a média do tempo de gols entre o 1º e o 2º turno do campeonato ?__
+
+O primeiro passo para responder tal pergunta e agrupar os gols em dois grupos: 1º turno e 2º turno. Feito isso, podemos usar um simples teste de hipóteses, no qual minhas hipóteses poderiam ser:
+
+__H0:__Não existe diferença significativa.  
+__H1:__Existe uma diferença significativa.
+
+Após definida as hipóteses, podemos então calcular o nosso p-value.
+
+```{r}
+
+     gols<-read.csv("camp brasileiro 2013 - dados processados copy.csv")
+     gols <- filter(gols,tempo_gol != "None")
+     gols$tempo_gol <- as.numeric(gols$tempo_gol)
+
+     turno_1 <- filter(gols, id_jogo <= 190)
+     turno_2 <- filter(gols, id_jogo > 190)
+     t.test(turno_1$tempo_gol,turno_2$tempo_gol)
+```
+
+Observando o resultado do teste notamos que o p-value se encontra acima de 5%, ou seja, não podemos refutar a nossa hipótese nula.
+A fim de obter uma análise mais completa, podemos calcular o Intervalo de Confiança da média de cada turno.
+
+```{r}
+
+     gols<-read.csv("camp brasileiro 2013 - dados processados copy.csv")
+     gols <- filter(gols,tempo_gol != "None")
+     gols$tempo_gol <- as.numeric(gols$tempo_gol)
+
+    gols$turno <- 0
+
+      for (i in seq(1,nrow(gols))){
+           if (gols[i,1] <= 190){
+                gols[i,8] <- 1
+             }
+           else{
+            gols[i,8] <- 2
+           }
+      }
+    
+       ggplot(gols, aes(x = turno, y = tempo_gol)) + 
+          stat_summary(fun.y = mean, geom = "point") + 
+          stat_summary(fun.data = mean_cl_normal, geom = "errorbar", colour = "blue",) + ggtitle("Intervalos de Confiança")
+
+```
+
+Observando o gráfico acima notamos que os intervalos das médias, praticamente, sobrepõem um ao outro, ou seja, não existe diferença significativa entre eles com 95% de confiança.
+
+__2) Existe uma diferença significativa entre a média do tempo de gol do campeão do campeonato  em relação aos demais times ?__
+
+A fim de responder essa questão, vamos precisar selecionar os gols marcados pelo campeão da nossa amostra e comparar com o tempo dos gols dos demais times. Antes disso, vamos definir nossas hipóteses:
+
+__H0:__Não existe diferença significativa entre a média do tempo de gols do campeão com os demais times.  
+__H1:__Existe uma diferença significativa entre a média do tempo de gols do campeão com os demais.
+
+```{r}
+    gols<-read.csv("camp brasileiro 2013 - dados processados copy.csv")
+    gols <- filter(gols,tempo_gol != "None")
+    gols$tempo_gol <- as.numeric(gols$tempo_gol)
+
+    gols_campeao <- filter(gols, time_gol == "Cruzeiro")
+    demais_times <- filter(gols, time_gol != "Cruzeiro")
+
+   t.test(gols_campeao$tempo_gol,demais_times$tempo_gol)
+
+```
+
+Novamente notamos que o p-value apresenta um valor maior que 5%, ou seja, não podemos refutar a nossa hipótese nula. Assim sendo, visualizando o gráfico de intervalo de confiança devemos observar os intervalos sobrepondo um ao outro.
+
+```{r}
+
+  gols<-read.csv("camp brasileiro 2013 - dados processados copy.csv")
+    gols <- filter(gols,tempo_gol != "None")
+    gols$tempo_gol <- as.numeric(gols$tempo_gol)   
+ 
+
+    gols$Cruz_Demais <- "X"
+
+    for (i in seq(1,nrow(gols))){
+           if (gols[i,5] == "Cruzeiro"){
+                gols[i,8] <- "Cruzeiro"
+             }
+           else{
+            gols[i,8] <- "Outros_Times"
+           }
+      }
+
+   ggplot(gols, aes(x = Cruz_Demais, y = tempo_gol)) + 
+          stat_summary(fun.y = mean, geom = "point") + 
+          stat_summary(fun.data = mean_cl_normal, geom = "errorbar", colour = "blue",) + ggtitle("Intervalos de Confiança")
+
+```
+
+  Como esperado os intervalos sobrepõe um ao outro.
+  
+__3)Existe uma diferença significativa entre a média do tempo de gols dos times que foram rebaixados em relação aos demais times?__
+
+Mais uma vez, vamos agrupar nossos dados em dois grupos: O grupo dos times que permaneceram na série A e os times que foram rebaixados para série B. Antes disso, vamos calcular nossas hipóteses:
+
+__H0:__Não existe diferença significativa entre a média do tempo de gols dos times rebaixados com os demais times.  
+__H1:__Existe uma diferença significativa entre a média do tempo de gols dos times rebaixados com os demais times.
+
+```{r}
+    gols<-read.csv("camp brasileiro 2013 - dados processados copy.csv")
+    gols <- filter(gols,tempo_gol != "None")
+    gols$tempo_gol <- as.numeric(gols$tempo_gol)   
+
+    rebaixados <- filter(gols, time_gol == "Portuguesa" | time_gol == "Vasco da Gama" | time_gol == "Ponte Preta" |time_gol ==                      "Náutico" )
+     
+    demais_times<- filter(gols, time_gol != "Portuguesa" & time_gol != "Vasco da Gama" & time_gol != "Ponte Preta" &time_gol !=                      "Náutico" )
+    
+   t.test(rebaixados$tempo_gol,demais_times$tempo_gol)
+
+```
+
+E, novamente, o p-value se encontra sendo maior que 5%, ou seja, não podemos descartar a hipótese nula.
+
