@@ -2,7 +2,7 @@
 title: "Problema3-checkPoint4"
 author: "Arthur Sena"
 date: "20-05-2015"
-output: word_document
+output: html_document
 ---
 
 ```{r}
@@ -154,4 +154,19 @@ __H1:__Existe uma diferença significativa entre a média do tempo de gols dos t
 ```
 
 E, novamente, o p-value se encontra sendo maior que 5%, ou seja, não podemos descartar a hipótese nula.
+
+```{r}
+    
+    gols<-read.csv("camp brasileiro 2013 - dados processados copy.csv")
+    gols <- filter(gols,tempo_gol != "None")
+    gols$tempo_gol <- as.numeric(gols$tempo_gol)   
+
+    times_gols <- group_by(gols, time_gol) %>% summarise_each(funs(length))
+    times_gols <- times_gols[,c(1,2)]
+    colnames(times_gols)<- c("Time","Gols")
+
+    campeaoGols <- filter(times_gols, Time == "Cruzeiro")
+    t.test(times_gols$Gols,campeaoGols$Gols)
+
+```
 
