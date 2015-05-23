@@ -155,6 +155,14 @@ __H1:__Existe uma diferença significativa entre a média do tempo de gols dos t
 
 E, novamente, o p-value se encontra sendo maior que 5%, ou seja, não podemos descartar a hipótese nula.
 
+
+__3)Existe uma diferença significativa entre a média de gols realizados pelos times jogando dentro e fora de casa?__
+Neste problema, nós precisaremos agrupar nossos dados em dois grupos: Quantidade de gols marcado dentro de casa e Quantidade de gols marcado fora de casa. À partir disso, nós podemos considerar um teste de hipóteses com a seguinte configuração:
+
+__H0:__Não existe diferença significativa entre a média de gols realizados pelos times jogando dentro e fora de casa.  
+__H1:__Existe uma diferença significativa entre a média de gols realizados pelos times jogando dentro e fora de casa.
+
+
 ```{r}
     
     gols<-read.csv("camp brasileiro 2013 - dados processados copy.csv")
@@ -166,7 +174,41 @@ E, novamente, o p-value se encontra sendo maior que 5%, ou seja, não podemos de
     colnames(times_gols)<- c("Time","Gols")
 
     campeaoGols <- filter(times_gols, Time == "Cruzeiro")
-    t.test(times_gols$Gols,campeaoGols$Gols)
+#     t.test(times_gols$Gols,campeaoGols$Gols)
 
+      jogos <- group_by(gols, id_jogo)
+jogos_dados <- data.frame(timeA=c(),timeB=c(),placarA=c(),placarB=c())
+
+for (i in ids){
+   jogo <- filter(jogos, id_jogo == as.numeric(i))
+   timeA <- jogo[1,2]
+   timeB <- jogo[1,3]
+   placarA <- max(jogo$placar_time_a)
+   placarB <- max(jogo$placar_time_b)
+   list(timeA, timeB,placarA,placarB)
+   jogos_dados <- rbind(jogos_dados,data.frame(timeA=c(timeA),timeB=c(timeB),placarA=c(placarA),placarB=c(placarB)))
+ }
+
+ casa <- jogos_dados[,c(1,3)]
+ fora <- jogos_dados[,c(2,4)]
+
+t.test(casa$placarA,fora$placarB)
 ```
 
+Observando o p-value, podemos concluir que existe sim uma diferença nas médias da quantidade de gols, ou seja, refutamos a hipótese nula. Vamos agora visualizar o gráfico dos intervalos de confiança, onde nós esperamos que tai intervalos não sobreponham um ao outro.
+
+```{r}
+colnames(casa) <- c("Time","Gols")
+casa$Fora_Casa <- "Casa"
+
+colnames(fora) <- c("Time","Gols")
+fora$Fora_Casa <- "Fora"
+
+jogos_dentro_fora <-rbind(casa, fora)
+
+ ggplot(jogos_dentro_fora, aes(x =Fora_Casa, y = Gols)) + 
+          stat_summary(fun.y = mean, geom = "point") + 
+          stat_summary(fun.data = mean_cl_normal, geom = "errorbar", colour = "blue",) + ggtitle("Intervalos de Confiança")
+```
+
+Visualizando o gráfico acima notamos que os intervalos estao, significativamente, distantes um do outro, o que ´e justamente o que n´os esper´avamos.
