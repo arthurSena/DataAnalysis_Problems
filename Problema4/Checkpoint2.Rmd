@@ -85,15 +85,41 @@ A partir de tais hipóteses, nós podemos criar um modelo e verificar o quão be
        summary(rl)
 ```
 
-Observando o modelo acima, notamos que as variáveis que mais influênciam são idade e o tipo de foto, pois o P-value delas é muito baixo em relação as demais.
+Observando o modelo acima, notamos que as variáveis que mais influênciam são idade e o tipo de foto (colorida ou preto-branco), pois o P-value delas é muito baixo em relação as demais. Assim sendo, vamos analisar o comportamento de uma regressão com apenas estas duas variáveis:
+
+```{r}
+      rl <- lm(avaliacoes$score ~ avaliacoes$age + avaliacoes$pic_color)      
+      summary(rl)
+```
+
+Podemos perceber que tais variáveis apresentam uma pequena influência no score dos professores. Assim sendo, vamos adicionar o atributo da beleza do professor e observar o que acontece.
+
+```{r}
+      rl <- lm(avaliacoes$score ~ avaliacoes$age + avaliacoes$pic_color + avaliacoes$bty_avg)      
+      summary(rl)
+```
+Nesse modelo é interessante observar que a idade não é significante pra esse modelo por causa do seu p-value não ser baixo o suficiente. Pra confirmar isso, podemos visualizar o intervalo de confiança dos coeficientes de cada variável no modelo.
+
+```{r}
+    rl <- lm(avaliacoes$score ~ avaliacoes$age + avaliacoes$pic_color + avaliacoes$bty_avg)      
+    confint(rl)
+```
+
+Vemos que o intervalo de confiança do coeficiente da variável idade possui o zero dentro dele, ou seja, tal variável pode não ter influência nenhuma no score do professor __nesse modelo__, porém pode existir outras regressões em que isso não se repita.
+
+#Female teachers vs Male teachers
+
+A fim de procurar outros modelos que expliquem nossos dados, vamos didivir o mesmo no conjunto de professores e professoras e verificar como se comportam nossas variáveis.
 
 
+__Female teachers__
 ```{r}
   
      female_teachers <- filter(avaliacoes, gender == "female")
      cor(female_teachers$score,female_teachers$age)
         
-     rl <- lm(female_teachers$score ~ female_teachers$age + female_teachers$bty_avg)
+     rl <- lm(female_teachers$score ~ female_teachers$age + female_teachers$bty_avg + female_teachers$pic_color)
+rl <- lm(female_teachers$score ~ female_teachers$age +  female_teachers$pic_color + female_teachers$pic_outfit + female_teachers$cls_level)
      summary(rl)
 
      ggplot(female_teachers, aes(y = score, x = age)) + 
