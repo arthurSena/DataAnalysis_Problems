@@ -133,29 +133,6 @@ Novamente notamos que o p-value apresenta um valor maior que 5%, ou seja, não p
 
   Como esperado os intervalos sobrepõe um ao outro.
   
-__3)Existe uma diferença significativa entre a média do tempo de gols dos times que foram rebaixados em relação aos demais times?__
-
-Mais uma vez, vamos agrupar nossos dados em dois grupos: O grupo dos times que permaneceram na série A e os times que foram rebaixados para série B. Antes disso, vamos calcular nossas hipóteses:
-
-__H0:__Não existe diferença significativa entre a média do tempo de gols dos times rebaixados com os demais times.  
-__H1:__Existe uma diferença significativa entre a média do tempo de gols dos times rebaixados com os demais times.
-
-```{r}
-    gols<-read.csv("camp brasileiro 2013 - dados processados copy.csv")
-    gols <- filter(gols,tempo_gol != "None")
-    gols$tempo_gol <- as.numeric(gols$tempo_gol)   
-
-    rebaixados <- filter(gols, time_gol == "Portuguesa" | time_gol == "Vasco da Gama" | time_gol == "Ponte Preta" |time_gol ==                      "Náutico" )
-     
-    demais_times<- filter(gols, time_gol != "Portuguesa" & time_gol != "Vasco da Gama" & time_gol != "Ponte Preta" &time_gol !=                      "Náutico" )
-    
-   t.test(rebaixados$tempo_gol,demais_times$tempo_gol)
-
-```
-
-E, novamente, o p-value se encontra sendo maior que 5%, ou seja, não podemos descartar a hipótese nula.
-
-
 __3)Existe uma diferença significativa entre a média de gols realizados pelos times jogando dentro e fora de casa?__
 Neste problema, nós precisaremos agrupar nossos dados em dois grupos: Quantidade de gols marcado dentro de casa e Quantidade de gols marcado fora de casa. À partir disso, nós podemos considerar um teste de hipóteses com a seguinte configuração:
 
@@ -174,8 +151,8 @@ __H1:__Existe uma diferença significativa entre a média de gols realizados pel
     colnames(times_gols)<- c("Time","Gols")
 
     campeaoGols <- filter(times_gols, Time == "Cruzeiro")
-#     t.test(times_gols$Gols,campeaoGols$Gols)
 
+      ids <- levels(as.factor(gols$id_jogo))
       jogos <- group_by(gols, id_jogo)
 jogos_dados <- data.frame(timeA=c(),timeB=c(),placarA=c(),placarB=c())
 
@@ -211,4 +188,4 @@ jogos_dentro_fora <-rbind(casa, fora)
           stat_summary(fun.data = mean_cl_normal, geom = "errorbar", colour = "blue",) + ggtitle("Intervalos de Confiança")
 ```
 
-Visualizando o gráfico acima notamos que os intervalos estao, significativamente, distantes um do outro, o que ´e justamente o que n´os esper´avamos.
+Visualizando o gráfico acima notamos que os intervalos estão, significativamente, distantes um do outro, o que é justamente o que nós esperávamos.

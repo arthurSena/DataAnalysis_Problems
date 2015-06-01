@@ -1,0 +1,76 @@
+---
+title: "Checkpoint2"
+author: "Arthur Sena"
+date: "05/30/2015"
+output: html_document
+---
+
+```{r}
+library(ggplot2, quietly = T, warn.conflicts = F)
+  library(dplyr, quietly = T, warn.conflicts = F)
+```
+
+#Descrição dos Dados
+Os dados foram coletados a partir das avaliações discentes de final de semestre de uma grande amostra de professores da Universidade do Texas em Austin. Além disso, seis estudantes avaliaram a aparência física dos professores. O resultado é um banco de dados no qual cada linha contém diferentes disciplinas e cada coluna representa as variáveis sobre as disciplinas e os professores. 
+
+Uma pequena amostra dos dados pode ser visualizada logo abaixo:
+
+```{r}
+      avaliacoes <- read.csv("evals.csv")
+      head(avaliacoes)
+```
+
+Os nomes das colunas e suas, respectivas, descrições se encontram na figura abaixo.
+
+![Descrições das colunas](colunas_descricoes.png)
+
+
+
+#Análise dos dados
+
+Vários cursos universitários dão aos alunos a oportunidade de avaliar o curso e o professor de maneira anônima ao final do semestre. Contudo, o uso das avaliações dos alunos como um indicador da qualidade do curso e a eficácia do ensino é frequentemente criticado porque essas medidas podem refletir a influência de características não relacionadas à docência, tal como a aparência física do professor. Na nossa nossa análise nós vamos tentar confirmar ou refutar se a o nivel de beleza do professor influ^encia na avaliaç~ao dos mesmo.
+
+Antes de mais nada, nós precisamos verificar se, realmente, existe uma correlação entre o score que o professor recebeu 
+e a média de sua beleza. Podemos fazer isso com o código abaixo:
+
+```{r}
+    cor(avaliacoes$score,avaliacoes$bty_avg)
+```
+
+O coeficiente de correlação indica a força e direção do relacionamento entre duas variáveis. Quanto mais próximo de zero mais é tal relacionamento. No nosso caso, podemos notar que existe sim uma correlação, porém é fraca. Afim de confirmar nossa afirmação, vamos criar uma regressão linear simples que tenta   
+
+```{r}
+  
+    avaliacoes <- read.csv("evals.csv")
+    beauty <- avaliacoes$bty_avg
+    score <- avaliacoes$score
+
+    data <- data_frame(x = score, y = beauty)
+    rl <- lm(data = data, score ~ beauty)
+    summary(rl)
+
+```
+
+Observando o valor do P-value, podemos dizer que existe 
+
+```{r}
+    ggplot(data, aes(y = score, x = beauty)) + 
+    geom_point(colour = "blue", size = 4) + 
+    theme_bw()
+```
+
+
+```{r}
+  
+     female_teachers <- filter(avaliacoes, gender == "female")
+     cor(female_teachers$score,female_teachers$age)
+        
+     rl <- lm(female_teachers$score ~ female_teachers$age + female_teachers$bty_avg)
+     summary(rl)
+
+     ggplot(female_teachers, aes(y = score, x = age)) + 
+    geom_point(colour = "blue", size = 4) + 
+    theme_bw()
+
+```
+
