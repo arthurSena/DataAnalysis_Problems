@@ -34,10 +34,10 @@ Antes de mais nada, nós precisamos verificar se, realmente, existe uma correla�
 e a média de sua beleza. Podemos fazer isso com o código abaixo:
 
 ```{r}
-    cor(avaliacoes$score,avaliacoes$bty_avg)
+    cor.test(avaliacoes$score,avaliacoes$bty_avg)
 ```
 
-O coeficiente de correlação indica a força e direção do relacionamento entre duas variáveis. Quanto mais próximo de zero mais é tal relacionamento. No nosso caso, podemos notar que existe sim uma correlação, porém é fraca. Afim de confirmar nossa afirmação, vamos criar uma regressão linear simples que tenta   
+O coeficiente de correlação indica a força e direção do relacionamento entre duas variáveis. Quanto mais próximo de zero mais é tal relacionamento. No nosso caso, podemos notar que existe sim uma correlação, porém é fraca. Afim de confirmar nossa afirmação, vamos criar uma regressão linear simples que tenta criar uma regressão para explicar os nossos dados.   
 
 ```{r}
   
@@ -45,19 +45,47 @@ O coeficiente de correlação indica a força e direção do relacionamento entr
     beauty <- avaliacoes$bty_avg
     score <- avaliacoes$score
 
-    data <- data_frame(x = score, y = beauty)
+    data <- data.frame(x = score, y = beauty)
     rl <- lm(data = data, score ~ beauty)
     summary(rl)
+    confint(rl)
 
 ```
 
-Observando o valor do P-value, podemos dizer que existe 
+
+Observando o valor do P-value, nós podemos descartar ou não a nossa hipótese nula. Nessa caso, nossa hipótese nula é que o coeficiente beta da beleza é igual à zero, ou seja, tal variável não tem nenhuma influência no score do professor. Como o nosso p-value é muito baixo nós podemos rejeitar tal hipótese. Porém, nós devemos olhar para o R-Quadrado a fim de verificar o quão bem a função representa os dados. Nessa caso, o R-Quadrado é muito baixo, ou seja, somente beauty não explica bem o score do professor.
+Abaixo, nós podemos ver um gráfico com os dados e a função que foi gerada a partir da regressão:
 
 ```{r}
     ggplot(data, aes(y = score, x = beauty)) + 
     geom_point(colour = "blue", size = 4) + 
-    theme_bw()
+    theme_bw() + geom_smooth(method = "lm")
 ```
+
+
+__Vamos encontrar um modelo que melhor explique o score do professor__
+
+Observando as nossas variáveis, acredito que as melhores variáveis que explicam o score são:
+
+Idade -  Acredito que professores mais novos tenham uma probabilidade maior de serem bem avaliados. 
+
+Cor da Foto - Acredito que um professor com uma foto mais bonita tenha uma melhor avaliação e acho que um a foto colorida apresenta mais chances de ser considerada bonita.
+
+Roupa do Professor - Acredito que pode ter alguma influência a forma como o professor se veste. Não sei ao certo se seria uma influência positiva ou negativa em cima da avaliação.
+
+Nível da Disciplina - Acredito que professores de disciplinas mais fáceis tem mais chances de receberem uma melhor avaliação.
+
+Sexo do Professor - Acredito que professores do sexo feminino apresentam uma maior chance de suas avaliações serem influências por variáveis que estão relacionadas à beleza, como por exemplo: Idade. 
+
+
+A partir de tais hipóteses, nós podemos criar um modelo e verificar o quão bem, ou não, tais variáveis vão explicar o score do professor.
+
+```{r}
+       rl <- lm(avaliacoes$score ~ avaliacoes$age + avaliacoes$cls_level + avaliacoes$pic_color + avaliacoes$pic_outfit)
+       summary(rl)
+```
+
+Observando o modelo acima, notamos que as variáveis que mais influênciam são idade e o tipo de foto, pois o P-value delas é muito baixo em relação as demais.
 
 
 ```{r}
