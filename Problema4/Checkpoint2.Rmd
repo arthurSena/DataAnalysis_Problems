@@ -121,10 +121,34 @@ __Female teachers__
      rl <- lm(female_teachers$score ~ female_teachers$age + female_teachers$bty_avg + female_teachers$pic_color)
 rl <- lm(female_teachers$score ~ female_teachers$age +  female_teachers$pic_color + female_teachers$pic_outfit + female_teachers$cls_level)
      summary(rl)
+```
 
-     ggplot(female_teachers, aes(y = score, x = age)) + 
+Analisando a nossa regressão vemos que as variáveis que mais explicam o score são cor da foto e idade.
+
+```{r}
+rl <- lm(female_teachers$score ~ female_teachers$age +  female_teachers$pic_color + female_teachers$bty_avg)
+summary(rl)
+```
+
+O código acima adiciona a variável 
+
+
+__Male teachers__
+```{r}
+  male_teachers <- filter(avaliacoes, gender == "male")
+     cor(male_teachers$score,male_teachers$cls_level)
+        
+     rl <- lm(male_teachers$score ~ male_teachers$age + male_teachers$bty_avg + male_teachers$pic_color)
+rl <- lm(male_teachers$score ~ male_teachers$age +  male_teachers$pic_color + male_teachers$pic_outfit + male_teachers$cls_level)
+     summary(rl)
+
+     ggplot(male_teachers, aes(y = score, x = age)) + 
     geom_point(colour = "blue", size = 4) + 
     theme_bw()
+
+# ggplot(female_teachers, aes(y = score, x = pic_color)) + 
+#     geom_point(colour = "blue", size = 4) + 
+#     theme_bw()
 
 ```
 
