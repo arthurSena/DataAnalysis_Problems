@@ -116,9 +116,8 @@ __Female teachers__
 ```{r}
   
      female_teachers <- filter(avaliacoes, gender == "female")
-     cor(female_teachers$score,female_teachers$age)
+     cor.test(female_teachers$score,female_teachers$age)
         
-     rl <- lm(female_teachers$score ~ female_teachers$age + female_teachers$bty_avg + female_teachers$pic_color)
 rl <- lm(female_teachers$score ~ female_teachers$age +  female_teachers$pic_color + female_teachers$pic_outfit + female_teachers$cls_level)
      summary(rl)
 ```
@@ -130,25 +129,29 @@ rl <- lm(female_teachers$score ~ female_teachers$age +  female_teachers$pic_colo
 summary(rl)
 ```
 
-O código acima adiciona a variável 
+O código acima adiciona a variável à beleza ao nosso modelos. Note que tal variável não apresenta nenhuma influência nesse, pois o p-value não é pequeno o suficiente ao ponto de descartar a hipótese nula.
 
 
 __Male teachers__
 ```{r}
   male_teachers <- filter(avaliacoes, gender == "male")
-     cor(male_teachers$score,male_teachers$cls_level)
+     cor.test(male_teachers$score,male_teachers$bty_avg)
         
-     rl <- lm(male_teachers$score ~ male_teachers$age + male_teachers$bty_avg + male_teachers$pic_color)
 rl <- lm(male_teachers$score ~ male_teachers$age +  male_teachers$pic_color + male_teachers$pic_outfit + male_teachers$cls_level)
      summary(rl)
-
-     ggplot(male_teachers, aes(y = score, x = age)) + 
-    geom_point(colour = "blue", size = 4) + 
-    theme_bw()
-
-# ggplot(female_teachers, aes(y = score, x = pic_color)) + 
-#     geom_point(colour = "blue", size = 4) + 
-#     theme_bw()
-
 ```
+Analisando o modelo acima notamos que o nível da disciplina (avançada, introdutória) apresenta certa influência no score. Vamos retirar tal variável e aplicar ela à um modelo junto com a beleza.
+
+```{r}
+  rl <- lm(male_teachers$score ~ male_teachers$bty_avg +  male_teachers$cls_level)
+  summary(rl)
+```
+
+Notamos que, diferentemente do modelo encontrado para professoras, a beleza apresenta uma certa influência no score juntamente com o nível da disciplina. Porém, o R-Quadrado é baixo, onde apenas 12% do score do professor é explicado pelo nosso modelo.
+
+
+#Conclusão:
+Não conseguimos encontrar um modelo significativo, onde a beleza tivesse influência alta no score do professor e que tal modelo apresentasse uma função com R-quadrado alto.
+
+
 
