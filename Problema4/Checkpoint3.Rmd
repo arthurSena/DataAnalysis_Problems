@@ -18,7 +18,24 @@ Nossos dados são referentes a um conjunto de emails classificados como spam ou 
 Uma pequena amostra dos nossos dados pode ser visualizada logo abaixo:
 
 ```{r}
-  emails <- read.csv("email.csv")
+  emails <- read.csv("emails.csv")
   head(emails)
+```
+
+
+```{r}
+matrix_correlacao <- cor(emails[,c(-6,-10,-21)])[,1]
+bm <- glm(spam ~ re_subj + format + sent_email + line_breaks + num_char, data = data_training)
+
+est <- glmnet(as.matrix(data_training[,c(-6,-10,-21)]), data_training$spam , family="binomial")
+> predictions <- predict(object = est, as.matrix(data_test[,c(-6,-10,-21)]), type="response")
+
+predictions <- predict.glmnet(object = est, as.matrix(data_test[,c(-1,-6,-10,-21)]), type="link", s = c(1)) > 0
+
+true_spam <- data_test$spam == 1
+
+est <- leaps(as.matrix(data_training[,c(-6,-10,-21)]), data_training$spam,names = names(data_training[,c(-6,-10,-21)]),method = "r2",nbest = 1)
+
+est_other <- regsubsets(data = data_training, nbest = 2, spam ~ spam    +to_multiple  +from+	cc	+sent_email)
 ```
 
