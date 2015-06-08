@@ -25,17 +25,45 @@ Uma pequena amostra dos nossos dados pode ser visualizada logo abaixo:
 
 ```{r}
 matrix_correlacao <- cor(emails[,c(-6,-10,-21)])[,1]
+data_training <- emails[ 1:2614,]
+temp <- (filter(data_training, spam == 0)[1:230,])
+temp2 <- (filter(data_training, spam == 1))
+data_training <- rbind(temp,temp2)
+
+data_test <- emails[ 2614:3921,]
+true_spam <-  data_test$spam == 1
+
+#  spam <- filter(emails, spam == 1)
+# not_spam <- filter(emails, spam == 0)
+# data_tranining2 <- rbind(spam,not_spam[1:2247,])
+
 bm <- glm(spam ~ re_subj + format + sent_email + line_breaks + num_char, data = data_training)
+predictions <- predict(bm, type = "response",newdata = data_test) > .5
+table(predictions,true_spam)
+require("vcd")
+mosaic(table(predictions, true_spam))
 
-est <- glmnet(as.matrix(data_training[,c(-6,-10,-21)]), data_training$spam , family="binomial")
-> predictions <- predict(object = est, as.matrix(data_test[,c(-6,-10,-21)]), type="response")
+bm <- glm(spam ~ re_subj + format + sent_email + line_breaks + num_char, data = data_training)
+predictions <- predict(bm, type = "response",newdata = data_test) > .75
+table(predictions,true_spam)
+require("vcd")
+mosaic(table(predictions, true_spam))
 
-predictions <- predict.glmnet(object = est, as.matrix(data_test[,c(-1,-6,-10,-21)]), type="link", s = c(1)) > 0
+bm <- glm(spam ~ re_subj + format + sent_email + line_breaks + num_char +exclaim_subj  +urgent_subj +winner + inherit	+viagra+	password	, data = data_training)
+predictions <- predict(bm, type = "response",newdata = data_test) > .75
+table(predictions,true_spam)
+require("vcd")
+mosaic(table(predictions, true_spam))
 
-true_spam <- data_test$spam == 1
-
-est <- leaps(as.matrix(data_training[,c(-6,-10,-21)]), data_training$spam,names = names(data_training[,c(-6,-10,-21)]),method = "r2",nbest = 1)
-
-est_other <- regsubsets(data = data_training, nbest = 2, spam ~ spam    +to_multiple  +from+	cc	+sent_email)
+# est <- glmnet(as.matrix(data_training[,c(-6,-10,-21)]), data_training$spam , family="binomial")
+# > predictions <- predict(object = est, as.matrix(data_test[,c(-6,-10,-21)]), type="response")
+# 
+# predictions <- predict.glmnet(object = est, as.matrix(data_test[,c(-1,-6,-10,-21)]), type="link", s = c(1)) > 0
+# 
+# true_spam <- data_test$spam == 1
+# 
+# est <- leaps(as.matrix(data_training[,c(-6,-10,-21)]), data_training$spam,names = names(data_training[,c(-6,-10,-21)]),method = "r2",nbest = 1)
+# 
+# est_other <- regsubsets(data = data_training, nbest = 2, spam ~ spam    +to_multiple  +from+	cc	+sent_email)
 ```
 
