@@ -2,11 +2,12 @@
 title: "Checkpoint3"
 author: "Arthur Sena"
 date: "06/04/2015"
-output: pdf_document
+output: html_document
 ---
 ```{r}
 library(ggplot2, quietly = T, warn.conflicts = F)
-  library(dplyr, quietly = T, warn.conflicts = F)
+library(dplyr, quietly = T, warn.conflicts = F)
+library("GGally")
 ```
 
 
@@ -22,48 +23,73 @@ Uma pequena amostra dos nossos dados pode ser visualizada logo abaixo:
   head(emails)
 ```
 
+Uma técnica interessante de observar o comportamento dos nossos dados é utilizar a função ggpairs(), na qual constrói uma matrix de gráficos das variáveis, onde nós conseguimos visulizar a relação entre elas. Um exemplo pode ser visto logo abaixo.
 
 ```{r}
-matrix_correlacao <- cor(emails[,c(-6,-10,-21)])[,1]
-data_training <- emails[ 1:2614,]
+ggpairs(emails[,c("re_subj", "format","sent_email", "line_breaks","num_char","spam")])
+```
+
+
+#Prevendo Spam e Não Spam
+O nosso objetivo nessa análise é encontrar um bom modelo que possa prever se um e-mail é spam ou não a partir das variáveis que os dados oferecem. Nós podemos iniciar criando um modelo com às variáveis que achamos que melhor expliquem a variável spam. A partir disso, podemos refinar nosso modelo a fim de consegui prever melhor os e-mails.
+
+```{r}
+data_training <- emails[1:2614,]
+temp <- (filter(data_training, spam == 0)[1:230,])
+temp2 <- (filter(data_training, spam == 1))
+data_training <- rbind(temp,temp2)
+bm <- glm(spam ~ re_subj + format + sent_email + line_breaks + num_char, data = data_training)
+```
+
+O modelo acima considera as variáveis: __re_subj__,__format__ , __sent_email__ ,__line_breaks__ , __num_char__
+É importante notar que o modelo foi criado a partir de uma base de emails de treinamento. Uma boa base de treinamento é aquela que apresenta uma quantidade de dados similares para cada caso particular. No nosso mundo, por exemplo, os casos são: Spam e Não Spam. Assim sendo, os dados de treinamento foram criados com uma quantidade similar de Spam e Não Spam a fim de se obter uma melhor previsão a partir do modelo.
+
+O código abaixo utiliza nosso modelo com intuito de prever os emails de uma base chamada "data_test". Nessa predição, nós consideramos que o email é spam, caso o mesmo apresente uma chance superior a 50%. Caso contrário, o mesmo é classificado como não spam.
+
+```{r}
+data_test <- emails[ 2614:3921,]
+true_spam <-  data_test$spam == 1
+predictions <- predict(bm, type = "response",newdata = data_test) > .5
+table(predictions,true_spam)
+```
+Observando a tabela acima, notamos que a nosso modelo classifica muito e-mails "não spam" como sendo "spam". No ambiente que estamos trabalhando, acredito que a quantidade de falsos positivos deva ser diminuido ao máximo, pois classificar um e-mail de trabalhao ou familiar de um usuário como spam é um erro bem grave. Outra forma de visualizar melhor nossa tabela é através do gráfico abaixo:
+
+```{r}
+require("vcd")
+mosaic(table(predictions, true_spam))
+```
+
+Agora vamos ajustar nosso modelo para classificar como spam apenas aqueles e-mails com mais de 75% de chance de ser um e observar o que ocorre.
+```{r}
+data_training <- emails[1:2614,]
 temp <- (filter(data_training, spam == 0)[1:230,])
 temp2 <- (filter(data_training, spam == 1))
 data_training <- rbind(temp,temp2)
 
 data_test <- emails[ 2614:3921,]
 true_spam <-  data_test$spam == 1
-
-#  spam <- filter(emails, spam == 1)
-# not_spam <- filter(emails, spam == 0)
-# data_tranining2 <- rbind(spam,not_spam[1:2247,])
-
-bm <- glm(spam ~ re_subj + format + sent_email + line_breaks + num_char, data = data_training)
-predictions <- predict(bm, type = "response",newdata = data_test) > .5
-table(predictions,true_spam)
-require("vcd")
-mosaic(table(predictions, true_spam))
-
 bm <- glm(spam ~ re_subj + format + sent_email + line_breaks + num_char, data = data_training)
 predictions <- predict(bm, type = "response",newdata = data_test) > .75
 table(predictions,true_spam)
-require("vcd")
-mosaic(table(predictions, true_spam))
 
-bm <- glm(spam ~ re_subj + format + sent_email + line_breaks + num_char +exclaim_subj  +urgent_subj +winner + inherit	+viagra+	password	, data = data_training)
-predictions <- predict(bm, type = "response",newdata = data_test) > .75
-table(predictions,true_spam)
-require("vcd")
-mosaic(table(predictions, true_spam))
-
-# est <- glmnet(as.matrix(data_training[,c(-6,-10,-21)]), data_training$spam , family="binomial")
-# > predictions <- predict(object = est, as.matrix(data_test[,c(-6,-10,-21)]), type="response")
-# 
-# predictions <- predict.glmnet(object = est, as.matrix(data_test[,c(-1,-6,-10,-21)]), type="link", s = c(1)) > 0
-# 
-# true_spam <- data_test$spam == 1
-# 
-# est <- leaps(as.matrix(data_training[,c(-6,-10,-21)]), data_training$spam,names = names(data_training[,c(-6,-10,-21)]),method = "r2",nbest = 1)
-# 
-# est_other <- regsubsets(data = data_training, nbest = 2, spam ~ spam    +to_multiple  +from+	cc	+sent_email)
 ```
+
+Podemos observar que a quantidade de falso positivo (Não spam sendo classificado como Spam) diminiu consideravelmente, apenas ajustando a probabilide de classificação de cada e-mail. Agora observe o mosaico da nossa tabela.
+
+```{r}
+require("vcd")
+mosaic(table(predictions, true_spam))
+```
+
+Vemos que a área do retângulo inferior a esquerda é bem menor que a área do retângulo do gráfico anterior. Visando melhorar ainda mais o modelos, podemos incluir mais variáveis que achamos que podem ajudar a melhorar o nosso classificador de e-mails. O código abaixo inclui as variáveis __exclaim_subj__ , __urgent_subj__, __winner__, __inherit__,  __viagra__,  __password__. Vamos observar o que acontece.
+
+```{r}
+    bm <- glm(spam ~ re_subj + format + sent_email + line_breaks + num_char +exclaim_subj  +urgent_subj +winner + inherit  +viagra+  password	, data = data_training)
+    predictions <- predict(bm, type = "response",newdata = data_test) > .75
+    table(predictions,true_spam)
+    require("vcd")
+    mosaic(table(predictions, true_spam))
+```
+
+Podemos notar que a inclusão de novas variáveis ajudou a melhorar mais um pouco o nosso modelo. O único cuidado que devemos ter aqui é em relação ao Overfitting, ou seja, nós podemos deixar o nosso modelo muito viciado aos dados de treinamento, onde ele consegue representar muito bem tais dados, porém no conjunto de testes real, tal modelo apresenta um desempenho ruim.
 
