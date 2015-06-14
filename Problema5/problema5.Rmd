@@ -1,0 +1,34 @@
+---
+title: "PrevendoEvasao"
+author: "Arthur Sena"
+date: "06/13/2015"
+output: html_document
+---
+
+```{r}
+
+treino<- read.csv("training_without_accents.txt")
+teste <- read.csv("test_without_accents.csv")
+
+ evadiu <- filter(treino, COD_EVASAO == 1)
+ nao_evadiu <- filter(treino, COD_EVASAO == 0)
+ treino2 <- rbind(evadiu[1:1000,],nao_evadiu[1:1200,])
+
+treino2[,"COD_EVASAO"]<- as.factor(treino2$COD_EVASAO)
+View(treino2)
+evasao_model <- C5.0(treino2[,c(3,7,9,10,11)], treino2$COD_EVASAO)
+treino2[,"MEDIA"] <- as.numeric(treino2$MEDIA)
+result <- predict(evasao_model,newdata = teste)
+CrossTable(teste$COD_EVASAO, result, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+
+summary(result)
+temp <- as.data.frame(result)
+saida <- cbind(teste$ID,temp)
+colnames(saida) <- c("ID","COD_EVASAO")
+write.csv(saida, file = "Saida.csv",row.names=F)
+
+
+
+
+```
+
