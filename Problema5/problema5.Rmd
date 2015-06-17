@@ -15,7 +15,7 @@ library(ggplot2, quietly = T, warn.conflicts = F)
 treino<- read.csv("training_without_accents.txt")
 teste <- read.csv("test_without_accents.csv")
 
- evadiu <- filter(treino, COD_EVASAO == 1,PERIODO_RELATIVO  == 1)
+ evadiu <- filter(treino, COD_EVASAO == 1, PERIODO_RELATIVO  == 1)
  nao_evadiu <- filter(treino, COD_EVASAO == 0, PERIODO_RELATIVO  == 1)
  treino2 <- rbind(evadiu[1:1000,],nao_evadiu[1:1200,])
 
@@ -25,6 +25,7 @@ View(treino2)
 evasao_model <- C5.0(treino2[,c(3,7,9,10,11)], treino2$COD_EVASAO)
 treino2[,"MEDIA"] <- as.numeric(treino2$MEDIA)
 result <- predict(evasao_model,newdata = teste)
+result
 CrossTable(teste$COD_EVASAO, result, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
 
 summary(result)
@@ -38,22 +39,41 @@ write.csv(saida, file = "Saida2.csv",row.names=F)
 ```{r}
      
 
-      getCourses <- function(treino){
-        alunos <- levels(as.factor(treino$MATRICULA))    
-        
-        temp = data.frame()
+getCourses <- function(treino){
+  alunos <- levels(as.factor(treino$MATRICULA))    
+  
+  for (aluno in alunos){
+       temp <- filter(treino, aluno == MATRICULA)
+       media <- sum(as.integer(temp[,"MEDIA"]),na.rm = T)
+       print(nrow(temp))
+       print(media)
+       print(media/nrow(temp))
+  }
+  
+  
+  temp = data.frame()
+  
+  dpt_exatas <- c("UNID. ACAD. DE MATEMATICA","FISICA I", "UNID. ACAD. DE ESTATISTICA","UNID. ACAD. DE ENGENHARIA ELETRICA","UNID. ACAD. DE ENGENHARIA CIVIL")
+  
+  
+  temp <- mutate(treino,Exatas = DEPARTAMENTO %in% dpt_exatas)
+  temp %>% group_by(MATRICULA, Exatas) %>% summarise(COUNT = n())
+  temp[,"X"] <- NULL
+  
+  x<- temp %>% group_by(MATRICULA, Exatas) %>% summarise(MEDIA=mean(MEDIA))
+  
+  temp %>% group_by(MATRICULA, MEDIA) %>% summarise(=mean())
 
-        dpt_exatas <- c("UNID. ACAD. DE MATEMATICA","FISICA I", "UNID. ACAD. DE ESTATISTICA","UNID. ACAD. DE ENGENHARIA ELETRICA")
-        
-       temp <- sapply(alunos, function(aluno){
-          
-            disciplinas_do_aluno <- (filter(treino, MATRICULA == aluno))[,"DISCIPLINA"]
-            disciplinas_exatas <-  filter(disciplinas_do_aluno, DISCIPLINA  %in% dpt_exatas)
-            rbind(temp)
-        })
-        
-        
-#         for (aluno  %in% alunos){
+  
+#   temp <- sapply(alunos, function(aluno){
+#     
+#     disciplinas_do_aluno <- (filter(treino, MATRICULA == aluno))[,"DISCIPLINA"]
+#     disciplinas_exatas <-  filter(disciplinas_do_aluno, DISCIPLINA  %in% dpt_exatas)
+#     rbind(temp)
+#     })
+  
+  
+  #         for (aluno  %in% alunos){
 #             disciplinas_do_aluno <- filter(treino, MATRICULA == aluno)
 #             cont = 0
 #             for (disciplinas %in% disciplinas_do_aluno[,"DISCIPLINA"]){
