@@ -1,0 +1,163 @@
+---
+title: "Round-1"
+author: "Arthur Sena"
+date: "22-06-2015"
+output: html_document
+---
+
+```{r}
+library(dplyr, quietly = T, warn.conflicts = F)
+library("C50")
+library("gmodels")
+```
+
+#Predição de Evasão dos feras de 2014.1
+
+O objetivo desse problema é tentar criar um modelos que consiga predizer com uma boa eficiência se um aluno do primeiro período irá ou não evadir o curso baseado no histórico do mesmo. As nossas variáveis e suas descrições se encontram logo abaixo:
+
+__MATRICULA:__ identificador do aluno
+
+__PERIODO:__ identificador do periodo letivo da universidade (ano.semestre)
+
+__COD_CURSO:__ identificador do curso
+
+__CURSO:__ nome do curso. Cada curso tem seu COD_CURSO
+
+__CODIGO:__ identificador da disciplina que o aluno cursou no periodo
+
+__DISCIPLINA:__ nome da disciplina referente que o aluno cursou no periodo. Cada disciplina tem seu CODIGO
+
+__CREDITOS:__ numero de créditos referente a disciplina
+
+__DEPARTAMENTO:__ departamento que ofertou a disciplina
+
+__MEDIA:__ media do aluno na disciplina (0 a 10). Alunos reprovados por falta numa disciplina recebem 0 e alunos que trancaram a disciplina recebem NA.
+
+__STATUS:__ Aprovado, Reprovado Por Falta, Trancado ou Reprovado. Se refere ao estado final do aluno na disciplina
+
+__PERIODO_INGRESSO:__ periodo letivo da universidade em que o aluno ingressou no curso.
+
+__PERIODO_RELATIVO:__ numero de periodos que o aluno está matriculado na universidade. "1" refere-se ao aluno em seu primeiro periodo, "5" refere-se ao aluno no quinto periodo.
+
+__COD_EVASAO:__ identificador de evasao do aluno. "0" significa que o aluno continuou ativo na universidade no periodo seguinte e "1" significa que o aluno desistiu do curso nesse periodo e não voltou a se matricular no seguinte.
+
+Uma pequena amostra dos dados pode ser visualizada logo abaixo:
+
+```{r}
+  treino<- read.csv("training_without_accents.txt")
+  summary(treino)
+```
+
+Observando os dados, notamos que os mesmos se encontram organizados por disciplinas, onde cada linha tem a média do aluno em uma determinada matéria. Ainda sim, podemos criar um modelo a partir desses dados e verificar o seu desempenho. As variáveis que eu achei que possam ter uma maior influência na evasõa foram:
+
+__COD_CURSO:__ Acredito que dependendo do curso o usuário apresenta ou não uma maior chance de evasão, pois penso que cursos da área de exatas são mais propícios a um maior índice de evasão.
+
+__DISCIPLINA:__ Acredito que tal variável apresenta uma grande chance de influência na classificação, pois acho que ela engloba um conjunto de fatores que são determinantes para a permanência, ou não, de alguns alunos no curso. Por exemplo: Dificuldade da disciplina/ Método de Ensino do Professor/ Horário/ Conteúdo. Por tais fatores acredito que uma ou mais disciplinas podem fazer o aluno evadir o curso.  
+
+__DEPARTAMENTO__: No meu ponto de vista departamentos de cursos de exatas apresentam um maior problema de evasão de alunos.   
+
+__MEDIA:__ Acredito que as notas do aluno podem desistimulá-lo a tanto desistir quanto prosseguir no curso.
+
+__SITUACAO:__ Por fim, acho que alunos que apresentem uma situação de aprovação maior que reprovação estão mais dispostos a continuarem no curso.
+
+Agora, nós usaremosa biblioteca C50 para construir a árvore de classificação.
+
+```{r}
+    treino<- read.csv("training_without_accents.txt")
+    teste <- read.csv("test_without_accents.csv")
+  
+    evadiu <- filter(treino, COD_EVASAO == 1, PERIODO_RELATIVO  == 1)
+    nao_evadiu <- filter(treino, COD_EVASAO == 0, PERIODO_RELATIVO  == 1)
+    treino2 <- rbind(evadiu[1:1000,],nao_evadiu[1:1200,])
+    
+    treino2[,"COD_EVASAO"]<- as.factor(treino2$COD_EVASAO)
+    treino2[,"X"] <- NULL
+    evasao_model <- C5.0(treino2[,c(3,7,9,10,11)], treino2$COD_EVASAO)
+    treino2[,"MEDIA"] <- as.numeric(treino2$MEDIA)
+    result <- predict(evasao_model,newdata = treino)
+    CrossTable(treino$COD_EVASAO, result, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+    recall <- 1281/1761
+    precision <- 1281/8147
+    Fmeasure <-  2 * precision * recall / (precision + recall)
+    print(Fmeasure)
+```
+
+Notamos que o F-measure apresenta um valor baixo, ou seja, esse muito provavelmente não é um bom modelo. O que realmente foi comprovado quando eu usei tal modelo para prever a evasão dos alunos e acabei obtendo uma pontuação de apenas 64% no Kaggle.
+
+__Melhorando Nosso Modelo__
+A fim de melhorar nosso modelo, nós devemos criar um novo dataset que expresse melhor nossos dados e que contenha novas variáveis. Uma boa estratégia é criar uma dataset, onde cada observação seria um aluno, seu respectivo CURSO e seu CRE naquele período. Pois, acreditamos que o CRE que o individuo atinga no fim do primeiro período juntamente com o CURSO do aluno tenham uma forte influência na decisão de prosseguir ou não no curso. Com isso em mente só precisamos utilizar os nossos conhecimentos em R. 
+
+```{r message=FALSE, warning=FALSE}
+  alunos <- levels(as.factor(treino$MATRICULA))    
+  new_data <- data.frame()
+  
+    for (aluno in alunos){
+         temp <- filter(treino, aluno == as.character(MATRICULA), na.omit = T)
+         media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
+         cod_evasao <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
+          CURSO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+         SITUACAO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
+         new_data <- rbind(new_data,data.frame(aluno,media,cod_evasao,CURSO),warn.conflicts = F )
+    }
+  
+  alunos_Teste <- levels(as.factor(treino2$MATRICULA))    
+  new_data2 <- data.frame()
+  for (aluno in alunos_Teste){
+       temp <- filter(treino2, aluno == as.character(MATRICULA), na.omit = T)
+       media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
+       COD_EVASAO <- treino2 %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
+        CURSO <- treino2 %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+       SITUACAO <- treino2 %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
+       new_data2 <- rbind(new_data2,data.frame(aluno,media,COD_EVASAO,CURSO))
+  }
+
+new_data[,"COD_EVASAO"] <- as.factor(new_data$COD_EVASAO)
+evasao_model <- C5.0(new_data[,c(1,2,4)], new_data$COD_EVASAO, na.omit = T)
+result <- predict(evasao_model,newdata = new_data2)
+CrossTable(new_data2$COD_EVASAO, result, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+recall <- 1000/1000
+precision <- 1000/1000
+Fmeasure <-  2 * precision * recall / (precision + recall)
+print(Fmeasure)
+```
+
+Notamos que diferentemente do modelo anterior, esse apresenta um F-measure alto. O que realmente foi confirmado quando eu submeti a minha predição utilizando esse modelo, pois consegui obter uma pontuação de 90%. Ainda tentando melhorar esse modelo eu resolvi adicionar a variável situação e curso para observar o que aconteceria.
+
+```{r message=FALSE, warning=FALSE}
+  alunos <- levels(as.factor(treino$MATRICULA))    
+  new_data <- data.frame()
+  
+    for (aluno in alunos){
+         temp <- filter(treino, aluno == as.character(MATRICULA), na.omit = T)
+         media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
+         cod_evasao <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
+         CURSO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+         SITUACAO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
+         new_data <- rbind(new_data,data.frame(aluno,media,cod_evasao,CURSO,SITUACAO),warn.conflicts = F )
+    }
+  
+  alunos_Teste <- levels(as.factor(treino2$MATRICULA))    
+  new_data2 <- data.frame()
+  for (aluno in alunos_Teste){
+       temp <- filter(treino2, aluno == as.character(MATRICULA), na.omit = T)
+       media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
+       COD_EVASAO <- treino2 %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
+       CURSO <- treino2 %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+       SITUACAO <- treino2 %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
+       new_data2 <- rbind(new_data2,data.frame(aluno,media,COD_EVASAO,CURSO,SITUACAO))
+  }
+
+new_data[,"COD_EVASAO"] <- as.factor(new_data$COD_EVASAO)
+evasao_model <- C5.0(new_data[,c(1,2,4,5)], new_data$COD_EVASAO, na.omit = T)
+result <- predict(evasao_model,newdata = new_data2)
+CrossTable(new_data2$COD_EVASAO, result, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+recall <- 1000/1000
+precision <- 1000/1000
+Fmeasure <-  2 * precision * recall / (precision + recall)
+print(Fmeasure)
+```
+
+Apesar do F-measure continuar alto, eu obtive um menor pontuação de 89% o que é um pouco menor que o modelo anterior.
+
+
+

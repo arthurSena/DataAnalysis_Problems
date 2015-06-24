@@ -8,6 +8,8 @@ output: html_document
 ```{r}
 library(ggplot2, quietly = T, warn.conflicts = F)
   library(dplyr, quietly = T, warn.conflicts = F)
+library("C50")
+library("gmodels")
 ```
 
 ```{r}
@@ -22,11 +24,11 @@ teste <- read.csv("test_without_accents.csv")
 treino2[,"COD_EVASAO"]<- as.factor(treino2$COD_EVASAO)
 treino2[,"X"] <- NULL
 View(treino2)
-evasao_model <- C5.0(treino2[,c(3,7,9,10,11)], treino2$COD_EVASAO)
+evasao_model <- C5.0(treino2[,c(3,7,9,10,11)], treino2$COD_EVASAO, na.omit = T)
 treino2[,"MEDIA"] <- as.numeric(treino2$MEDIA)
-result <- predict(evasao_model,newdata = teste)
+result <- predict(evasao_model,newdata = treino2)
 result
-CrossTable(teste$COD_EVASAO, result, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+CrossTable(treino2$COD_EVASAO, result, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
 
 summary(result)
 temp <- as.data.frame(result)
@@ -42,14 +44,75 @@ write.csv(saida, file = "Saida2.csv",row.names=F)
 getCourses <- function(treino){
   alunos <- levels(as.factor(treino$MATRICULA))    
   
-  for (aluno in alunos){
-       temp <- filter(treino, aluno == MATRICULA)
-       media <- sum(as.integer(temp[,"MEDIA"]),na.rm = T)
-       print(nrow(temp))
-       print(media)
-       print(media/nrow(temp))
-  }
+  new_data <- data.frame()
   
+  for (aluno in alunos){
+       temp <- filter(treino, aluno == as.character(MATRICULA), na.omit = T)
+       media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
+#        print(nrow(temp))
+       print(media)
+      cod_evasao <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
+     CURSO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+     SITUACAO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
+
+       new_data <- rbind(new_data,data.frame(aluno,media,cod_evasao,CURSO) )
+#        print(media/nrow(temp))
+#        print(aluno)
+  }
+}
+getCourses <- function(teste){
+  alunos_Teste <- levels(as.factor(teste$MATRICULA))    
+  
+  new_data2 <- data.frame()
+  
+  for (aluno in alunos_Teste){
+       temp <- filter(teste, aluno == as.character(MATRICULA), na.omit = T)
+       media <- sum(temp$MEDIA,na.rm = T)/nrow(temp)
+#        print(nrow(temp))
+       print(media)
+#       cod_evasao <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
+CURSO <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+ID <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(ID)
+     SITUACAO <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
+
+       new_data2 <- rbind(new_data2,data.frame(aluno,media,CURSO,ID) )
+#        print(media/nrow(temp))
+#        print(aluno)
+  }
+
+getCourses <- function(treino2){
+  alunos_Teste <- levels(as.factor(treino2$MATRICULA))    
+  
+  new_data2 <- data.frame()
+  
+  for (aluno in alunos_Teste){
+       temp <- filter(treino2, aluno == as.character(MATRICULA), na.omit = T)
+       media <- sum(temp$MEDIA,na.rm = T)/nrow(temp)
+#        print(nrow(temp))
+       print(media)
+      COD_EVASAO <- treino2 %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
+CURSO <- treino2 %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+       new_data2 <- rbind(new_data2,data.frame(aluno,media,CURSO,COD_EVASAO) )
+#        print(media/nrow(temp))
+#        print(aluno)
+  }
+}
+
+new_data[,"COD_EVASAO"] <- as.factor(new_data$COD_EVASAO)
+new_data[,"aluno"] <- as.integer(new_data$aluno)
+new_data2[,"aluno"] <- as.integer(new_data2$aluno)
+
+evasao_model <- C5.0(new_data[,c(1,2,4)], new_data$COD_EVASAO, na.omit = T)
+
+result <- predict(evasao_model,newdata = new_data2)
+
+summary(result)
+saida3 <- (cbind(new_data2$ID,as.data.frame(result)))
+colnames(saida3) <- c("ID","COD_EVASAO")
+write.csv(saida3, file = "Saida4.csv",row.names=F)
+CrossTable(new_data2$COD_EVASAO, result, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+
+  }
   
   temp = data.frame()
   
