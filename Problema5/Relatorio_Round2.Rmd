@@ -2,8 +2,40 @@
 title: "Round-2"
 author: "Arthur Sena"
 date: "06/24/2015"
-output: html_document
+output: pdf_document
 ---
+
+```{r}
+```{r message=FALSE,warning=FALSE}
+
+alunos_Teste <- levels(as.factor(teste$MATRICULA))    
+  
+  new_data2 <- data.frame()
+  
+  for (aluno in alunos_Teste){
+       temp <- filter(teste, aluno == as.character(MATRICULA), na.omit = T)
+       media <- sum(temp$MEDIA)/nrow(temp)
+       print(media)
+CURSO <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+ID <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(ID)
+     SITUACAO <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
+ CREDITOS <- sum(temp$CREDITOS, na.rm = T)/nrow(temp)
+ PERIODO <- temp$PERIODO_RELATIVO
+ REPROVADO_FALTA <- "false"
+         if (nrow(filter(temp, SITUACAO == "Trancado")) > 0){
+            REPROVADO_FALTA <- "true"
+         } 
+       new_data2 <- rbind(new_data2,data.frame(aluno,media,CURSO,SITUACAO,CREDITOS,REPROVADO_FALTA,PERIODO,ID) )
+  }
+
+```
+
+
+saida <- (cbind(new_data2$ID,as.data.frame(result)))
+colnames(saida) <- c("ID","COD_EVASAO")
+write.csv(saida, file = "Saida7_PeriodoRelativo.csv",row.names=F)
+```
+
 
 ```{r}
 library(dplyr, quietly = T, warn.conflicts = F)
@@ -13,11 +45,12 @@ library("gmodels")
 
 #Predição de Evasão de alunos do quinto período
 
-Nesse segundo round da competição, nós utilzaremos os mesmos dados, porém tetaremos criar um bom modelo para prever a evasão de alunos que estão no quinto período do curso. Os nossos dados podem ser, novamente, vistos abaixo:
+Nesse segundo round da competição, nós utilizaremos os mesmos dados, porém tetaremos criar um bom modelo para prever a evasão de alunos que estão no quinto período do curso. Os nossos dados podem ser, novamente, vistos abaixo:
 
 ```{r}
-    treino<- read.csv("training_without_accents.txt")
+    treino<- read.csv("treino_2Round.csv")
     summary(treino)
+    head(treino)
 ```
 
 
@@ -61,11 +94,6 @@ evasao_model <- C5.0(new_data[,c(1,2,4)], new_data$COD_EVASAO, na.omit = T)
 result <- predict(evasao_model,newdata = new_data2)
  CrossTable(new_data2$COD_EVASAO, result, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
 
-
-saida <- (cbind(new_data2$ID,as.data.frame(result)))
-colnames(saida) <- c("ID","COD_EVASAO")
-write.csv(saida, file = "Saida7_PeriodoRelativo.csv",row.names=F)
-
 recall <- 3/319
 precision <-3/3
 Fmeasure <-  2 * precision * recall / (precision + recall)
@@ -86,7 +114,6 @@ No meu segundo modelo, eu resolvi usar a variável situação e observar como me
          cod_evasao <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
           CURSO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
          SITUACAO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
-         print(media)
          new_data <- rbind(new_data,data.frame(aluno,media,CURSO,SITUACAO,cod_evasao))
     }
   
@@ -115,8 +142,10 @@ print(Fmeasure)
 Esse modelo obteve um F-measure melhor que o anterior, porém não consegui melhorar minha pontuação no kaggle, pois mantive um score de 94%.
 
 
-#Terceiro Modelo
+#Outros Modelos.
+Eu construi mais 7 diferentes modelos tentando melhorar minha pontuação, mas infelizmente não consegui. Alguns desses modelos conseguiam prever muito bem os dados de treino, onde obtive o F-measure de valor 1. Ainda sim, quando eu fazia minha submissão via Kaggle minha pontuação continuava a mesma. O que me leva a acreditar que minhas árvores de decisão nao conseguiam generalizar suas previsões muito bem (Overfitting). Abaixo se encontra algumas árvores que eu tinha criado e seus respectivos F-measure.
 
+__Adicionando Variável Total de Créditos cursado pelo aluno__
 ```{r message=FALSE, warning=FALSE}
   alunos <- levels(as.factor(treino$MATRICULA))    
   new_data <- data.frame()
@@ -128,13 +157,7 @@ Esse modelo obteve um F-measure melhor que o anterior, porém não consegui melh
           CURSO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
          SITUACAO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
          CREDITOS <- sum(temp$CREDITOS)/nrow(temp)
-         REPROVADO_FALTA <- "false"
-         if (nrow(filter(temp, SITUACAO == "Trancado")) > 0){
-            REPROVADO_FALTA <- "true"
-         } 
-#           PERIODO <- temp$PERIODO
-         PERIODO <- temp$PERIODO_RELATIVO
-         new_data <- rbind(new_data,data.frame(aluno,media,CURSO,SITUACAO,CREDITOS,REPROVADO_FALTA, PERIODO,cod_evasao))
+         new_data <- rbind(new_data,data.frame(aluno,media,CURSO,SITUACAO,CREDITOS,cod_evasao))
     }
   
   alunos_Teste <- levels(as.factor(treino2$MATRICULA))    
@@ -146,19 +169,51 @@ Esse modelo obteve um F-measure melhor que o anterior, porém não consegui melh
         CURSO <- treino2 %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
        SITUACAO <- treino2 %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
        CREDITOS <- sum(temp$CREDITOS)/nrow(temp)
-        REPROVADO_FALTA <- "false"
-         if (nrow(filter(temp, SITUACAO == "Trancado")) > 0){
-            REPROVADO_FALTA <- "true"
-         } 
-#        PERIODO <- temp$PERIODO
-        PERIODO <- temp$PERIODO_RELATIVO
-       new_data2 <- rbind(new_data2,data.frame(aluno,media,CURSO,SITUACAO,CREDITOS, REPROVADO_FALTA,PERIODO ,COD_EVASAO))
+       new_data2 <- rbind(new_data2,data.frame(aluno,media,CURSO,SITUACAO,CREDITOS,COD_EVASAO))
   }
 
 new_data[,"COD_EVASAO"] <- as.factor(new_data$COD_EVASAO)
-# new_data[,"aluno"] <- as.integer(new_data$aluno)
-# new_data2[,"aluno"] <- as.integer(new_data2$aluno)
-evasao_model <- C5.0(new_data[,c(1,2)], new_data$COD_EVASAO, na.omit = T)
+evasao_model <- C5.0(new_data[,c(1,2,3,4,5)], new_data$COD_EVASAO, na.omit = T)
+result <- predict(evasao_model,newdata = new_data2)
+ CrossTable(new_data2$COD_EVASAO, result, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+recall <- 159/319
+precision <- 159/159
+Fmeasure <-  2 * precision * recall / (precision + recall)
+print(Fmeasure)
+```
+
+
+__Adicionando Variável Período que o aluno se encontra__
+```{r message=FALSE, warning=FALSE}
+  alunos <- levels(as.factor(treino$MATRICULA))    
+  new_data <- data.frame()
+  
+    for (aluno in alunos){
+         temp <- filter(treino, aluno == as.character(MATRICULA), na.omit = T)
+         media <- sum(temp$MEDIA)/nrow(temp)
+         cod_evasao <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
+          CURSO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+         SITUACAO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
+         CREDITOS <- sum(temp$CREDITOS)/nrow(temp)
+         PERIODO <- temp$PERIODO_RELATIVO
+         new_data <- rbind(new_data,data.frame(aluno,media,CURSO,SITUACAO,CREDITOS, PERIODO,cod_evasao))
+    }
+  
+  alunos_Teste <- levels(as.factor(treino2$MATRICULA))    
+  new_data2 <- data.frame()
+  for (aluno in alunos_Teste){
+       temp <- filter(treino2, aluno == as.character(MATRICULA), na.omit = T)
+       media <- sum(temp$MEDIA)/nrow(temp)
+       COD_EVASAO <- treino2 %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
+        CURSO <- treino2 %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+       SITUACAO <- treino2 %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
+       CREDITOS <- sum(temp$CREDITOS)/nrow(temp)
+        PERIODO <- temp$PERIODO_RELATIVO
+       new_data2 <- rbind(new_data2,data.frame(aluno,media,CURSO,SITUACAO,CREDITOS, PERIODO ,COD_EVASAO))
+  }
+
+new_data[,"COD_EVASAO"] <- as.factor(new_data$COD_EVASAO)
+evasao_model <- C5.0(new_data[,c(1,2,3,4,5,6)], new_data$COD_EVASAO, na.omit = T)
 result <- predict(evasao_model,newdata = new_data2)
  CrossTable(new_data2$COD_EVASAO, result, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
 recall <- 319/319
@@ -166,35 +221,3 @@ precision <-319/159
 Fmeasure <-  2 * precision * recall / (precision + recall)
 print(Fmeasure)
 ```
-
-
-```{r message=FALSE,warning=FALSE}
-
-alunos_Teste <- levels(as.factor(teste$MATRICULA))    
-  
-  new_data2 <- data.frame()
-  
-  for (aluno in alunos_Teste){
-       temp <- filter(teste, aluno == as.character(MATRICULA), na.omit = T)
-       media <- sum(temp$MEDIA)/nrow(temp)
-#        print(nrow(temp))
-       print(media)
-#       cod_evasao <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
-CURSO <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
-ID <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(ID)
-     SITUACAO <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
- CREDITOS <- sum(temp$CREDITOS, na.rm = T)/nrow(temp)
- PERIODO <- temp$PERIODO_RELATIVO
- REPROVADO_FALTA <- "false"
-         if (nrow(filter(temp, SITUACAO == "Trancado")) > 0){
-            REPROVADO_FALTA <- "true"
-         } 
-       new_data2 <- rbind(new_data2,data.frame(aluno,media,CURSO,SITUACAO,CREDITOS,REPROVADO_FALTA,PERIODO,ID) )
-#        print(media/nrow(temp))
-#        print(aluno)
-  }
-
-```
-
-
-

@@ -2,7 +2,7 @@
 title: "Round-1"
 author: "Arthur Sena"
 date: "22-06-2015"
-output: html_document
+output: pdf_document
 ---
 
 ```{r}
@@ -46,9 +46,10 @@ Uma pequena amostra dos dados pode ser visualizada logo abaixo:
 ```{r}
   treino<- read.csv("training_without_accents.txt")
   summary(treino)
+  head(treino)
 ```
 
-Observando os dados, notamos que os mesmos se encontram organizados por disciplinas, onde cada linha tem a média do aluno em uma determinada matéria. Ainda sim, podemos criar um modelo a partir desses dados e verificar o seu desempenho. As variáveis que eu achei que possam ter uma maior influência na evasõa foram:
+Observando os dados, notamos que os mesmos se encontram organizados por disciplinas, onde cada linha tem a média do aluno em uma determinada matéria. Ainda sim, podemos criar um modelo a partir desses dados e verificar o seu desempenho. As variáveis que eu achei que possam ter uma maior influência na evasão foram:
 
 __COD_CURSO:__ Acredito que dependendo do curso o usuário apresenta ou não uma maior chance de evasão, pois penso que cursos da área de exatas são mais propícios a um maior índice de evasão.
 
@@ -60,7 +61,7 @@ __MEDIA:__ Acredito que as notas do aluno podem desistimulá-lo a tanto desistir
 
 __SITUACAO:__ Por fim, acho que alunos que apresentem uma situação de aprovação maior que reprovação estão mais dispostos a continuarem no curso.
 
-Agora, nós usaremosa biblioteca C50 para construir a árvore de classificação.
+Agora, nós usaremos a biblioteca C50 para construir a árvore de classificação.
 
 ```{r}
     treino<- read.csv("training_without_accents.txt")
