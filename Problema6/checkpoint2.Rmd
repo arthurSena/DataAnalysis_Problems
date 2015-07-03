@@ -1,0 +1,83 @@
+---
+title: "Comparando Modelos de Previsão"
+author: "Arthur Sena"
+date: "07/02/2015"
+output: pdf_document
+---
+
+
+
+```{r}
+library(dplyr, quietly = T, warn.conflicts = F)
+library("gmodels")
+library("C50")
+library(caret)
+
+
+```
+
+
+```{r}
+
+    treino<- read.csv("training_without_accents.txt")
+    teste <- read.csv("test_without_accents.csv")
+
+
+    
+
+```
+
+#Transforma o dataset de disciplinas para um dataset de alunos
+```{r}
+    alunos <- levels(as.factor(treino$MATRICULA))    
+    alunos_dataset <- data.frame()
+    for (aluno in alunos){
+         temp <- filter(treino, aluno == as.character(MATRICULA), na.omit = T)
+         media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
+         cod_evasao <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
+          CURSO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+         SITUACAO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
+         alunos_dataset <- rbind(alunos_dataset,data.frame(aluno,media,CURSO,cod_evasao),warn.conflicts = F )
+    }
+    alunos_dataset <- alunos_dataset[complete.cases(alunos_dataset),]
+    rownames(alunos_dataset) <- NULL
+    alunos_dataset[,"COD_EVASAO"]<- as.factor(alunos_dataset$COD_EVASAO)
+
+    #Usando o KNN no caret
+fitControl = trainControl(method = "repeatedcv",number = 10,  repeats = 10)
+knn_grid = expand.grid(k=c(1:20))
+best_knn_model = train(alunos_dataset[-4], alunos_dataset[,1],method="knn",preProcess=c("range"),tuneGrid=knn_grid,trControl=fitControl)
+
+
+#Usando o SVM no caret
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+modelSvm <- train(COD_EVASAO~., data=alunos_dataset, method="svmRadial", trControl=control)
+
+
+
+```
+
+#Criar uma partição de treino adequada
+```{r}
+    evadiu <- filter(treino, COD_EVASAO == 1, PERIODO_RELATIVO  == 1)
+    nao_evadiu <- filter(treino, COD_EVASAO == 0, PERIODO_RELATIVO  == 1)
+    particao_teste <- rbind(evadiu[1:1000,],nao_evadiu[1:1200,])
+    
+    particao_teste[,"COD_EVASAO"]<- as.factor(particao_teste$COD_EVASAO)
+    particao_teste[,"X"] <- NULL
+
+
+      alunos_Teste <- levels(as.factor(particao_teste$MATRICULA))    
+      particao_teste_completa <- data.frame()
+      for (aluno in alunos_Teste){
+           temp <- filter(particao_teste, aluno == as.character(MATRICULA), na.omit = T)
+           media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
+           COD_EVASAO <- particao_teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
+            CURSO <- particao_teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+           SITUACAO <- particao_teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
+           particao_teste_completa <- rbind(particao_teste_completa,data.frame(aluno,media,CURSO,COD_EVASAO))
+      }
+
+
+```
+
