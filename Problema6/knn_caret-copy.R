@@ -20,7 +20,7 @@ library(caret)
 # load the dataset
 data(PimaIndiansDiabetes)
 # prepare training scheme
-control <- trainControl(method="repeatedcv", number=10, repeats=3)
+control <- trainControl(method="repeatedcv", number=5, repeats=2)
 # train the LVQ model
 set.seed(7)
 modelLvq <- train(diabetes~., data=PimaIndiansDiabetes, method="lvq", trControl=control)

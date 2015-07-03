@@ -43,17 +43,18 @@ library(caret)
     rownames(alunos_dataset) <- NULL
     alunos_dataset[,"COD_EVASAO"]<- as.factor(alunos_dataset$COD_EVASAO)
 
-    #Usando o KNN no caret
-fitControl = trainControl(method = "repeatedcv",number = 10,  repeats = 10)
+#Usando o KNN no caret
+control = trainControl(method = "repeatedcv", repeats = 3)
 knn_grid = expand.grid(k=c(1:20))
-best_knn_model = train(alunos_dataset[-4], alunos_dataset[,1],method="knn",preProcess=c("range"),tuneGrid=knn_grid,trControl=fitControl)
+best_knn_model = train(COD_EVASAO~.,  data=alunos_dataset ,method="knn",preProcess=c("range"),tuneGrid=knn_grid,trControl=control)
 
 
 #Usando o SVM no caret
-control <- trainControl(method="repeatedcv", number=10, repeats=3)
+control <- trainControl(method="repeatedcv", number=5, repeats=2)
 modelSvm <- train(COD_EVASAO~., data=alunos_dataset, method="svmRadial", trControl=control)
 
-
+pred<-predict(modelSvm, newdata = particao_teste_completa)
+  CrossTable(particao_teste_completa$COD_EVASAO, pred, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
 
 ```
 
