@@ -16,7 +16,8 @@ matriculas <- levels(as.factor(teste$MATRICULA))
        temp <- filter(teste, aluno == as.character(MATRICULA), na.omit = T)
        media <- sum(temp$MEDIA)/nrow(temp)
        print(media)
-CURSO <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+# CURSO <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+CURSO <- temp[1,4]
 ID <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(ID)
      SITUACAO <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
  CREDITOS <- sum(temp$CREDITOS, na.rm = T)/nrow(temp)
@@ -26,8 +27,23 @@ ID <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(ID)
             REPROVADO_FALTA <- "true"
          } 
 #     alunos_teste <- rbind(alunos_teste,data.frame(aluno,media,CURSO,SITUACAO,CREDITOS,REPROVADO_FALTA,PERIODO,ID))
-alunos_teste <- rbind(alunos_teste,data.frame(aluno,media,CURSO,ID))
+      alunos_teste <- rbind(alunos_teste,data.frame(aluno,media,CURSO,ID))
 }
+
+ levels(alunos_teste$CURSO) <- c(0,1)
+    alunos_teste[,3] <-as.numeric(levels(alunos_teste[,3]))[alunos_teste[,3]]
+alunos_teste[,1] <-as.numeric(levels(alunos_teste[,1]))[alunos_teste[,1]]
+
+pred<-predict(modelSvm, newdata = alunos_teste)
+length(pred)
+class(pred)
+pred
+
+#Codigo pra escrever a saida no csv
+saida <- (cbind(alunos_teste$ID,as.data.frame(pred)))
+colnames(saida) <- c("ID","COD_EVASAO")
+write.csv(saida, file = "Saida1_Fera_MediaCurso.csv",row.names=F)
+
 ```
 
 
@@ -58,11 +74,11 @@ library(caret)
     for (aluno in alunos){
          temp <- filter(treino, aluno == as.character(MATRICULA), na.omit = T)
          media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
-         cod_evasao <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
-          CURSO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+#          cod_evasao <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
+#           CURSO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
 #          SITUACAO <- treino %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
-#         COD_EVASAO <- temp[1,14]
-#          CURSO <- temp[1,4]
+        COD_EVASAO <- temp[1,14]
+         CURSO <- temp[1,4]
          alunos_dataset <- rbind(alunos_dataset,data.frame(aluno,media,CURSO,COD_EVASAO),warn.conflicts = F )
     }
     alunos_dataset <- alunos_dataset[complete.cases(alunos_dataset),]
@@ -73,7 +89,7 @@ library(caret)
     alunos_dataset[,3] <-as.numeric(levels(alunos_dataset[,3]))[alunos_dataset[,3]]
 
 #Usando o KNN no caret
-control = trainControl(method = "repeatedcv", number=10,repeats = 10)
+control = trainControl(method = "repeatedcv", number=5,repeats = 5)
 knn_grid = expand.grid(k=c(1:20))
 knn_model = train(COD_EVASAO~.,  data=alunos_dataset ,method="knn",preProcess=c("range"),tuneLength = 5,trControl=control, na.action=na.omit)
 # best_knn_model = train(alunos_dataset[,1:3],alunos_dataset[,4],method="knn",preProcess = c("center", "scale"),
@@ -86,7 +102,7 @@ CrossTable(particao_teste_completa$COD_EVASAO, pred, prop.chisq = FALSE, prop.c 
 
 #Usando o SVM no caret
 control <- trainControl(method="repeatedcv", number=10,repeats=10)
-modelSvm <- train(COD_EVASAO~media+CURSO, data=alunos_dataset, method="svmRadial", trControl=control)
+modelSvm <- train(COD_EVASAO~., data=alunos_dataset, method="svmRadial", trControl=control)
 
 pred<-predict(modelSvm, newdata = particao_teste_completa)
 summary(pred)  
@@ -136,10 +152,10 @@ results <- resamples(list(RL=modelRl, KNN=knn_model, SVM=modelSvm))
             temp <- filter(particao_teste, aluno == as.character(MATRICULA), na.omit = T)
             media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
 #            COD_EVASAO <- particao_teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
-            CURSO <- particao_teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
-           SITUACAO <- particao_teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
-#             COD_EVASAO <- temp[1,14]
-#             CURSO <- temp[1,4]
+#             CURSO <- particao_teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+#            SITUACAO <- particao_teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
+            COD_EVASAO <- temp[1,14]
+            CURSO <- temp[1,4]
             particao_teste_completa <- rbind(particao_teste_completa,data.frame(aluno,media,CURSO,COD_EVASAO))
       }
     particao_teste_completa <- particao_teste_completa[complete.cases(particao_teste_completa),]
