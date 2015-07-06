@@ -35,6 +35,9 @@ ID <- teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(ID)
 alunos_teste[,1] <-as.numeric(levels(alunos_teste[,1]))[alunos_teste[,1]]
 
 pred<-predict(modelSvm, newdata = alunos_teste)
+pred<-predict(knn_model, newdata = alunos_teste)
+pred<-predict(modelC50, newdata = alunos_teste)
+
 length(pred)
 class(pred)
 pred
@@ -42,7 +45,7 @@ pred
 #Codigo pra escrever a saida no csv
 saida <- (cbind(alunos_teste$ID,as.data.frame(pred)))
 colnames(saida) <- c("ID","COD_EVASAO")
-write.csv(saida, file = "Saida1_Fera_MediaCurso.csv",row.names=F)
+write.csv(saida, file = "Saida3_Fera_MediaCurso_C50.csv",row.names=F)
 
 ```
 
@@ -89,9 +92,10 @@ library(caret)
     alunos_dataset[,3] <-as.numeric(levels(alunos_dataset[,3]))[alunos_dataset[,3]]
 
 #Usando o KNN no caret
-control = trainControl(method = "repeatedcv", number=5,repeats = 5)
+control = trainControl(method = "repeatedcv", number=10,repeats = 10)
 knn_grid = expand.grid(k=c(1:20))
 knn_model = train(COD_EVASAO~.,  data=alunos_dataset ,method="knn",preProcess=c("range"),tuneLength = 5,trControl=control, na.action=na.omit)
+knn_model = train(COD_EVASAO~media+CURSO,  data=alunos_dataset ,method="knn",preProcess=c("range"),tuneGrid = knn_grid,trControl=control, na.action=na.omit)
 # best_knn_model = train(alunos_dataset[,1:3],alunos_dataset[,4],method="knn",preProcess = c("center", "scale"),
 #                  tuneLength = 10,
 #                  trControl = trainControl(method = "cv"))
@@ -102,7 +106,7 @@ CrossTable(particao_teste_completa$COD_EVASAO, pred, prop.chisq = FALSE, prop.c 
 
 #Usando o SVM no caret
 control <- trainControl(method="repeatedcv", number=10,repeats=10)
-modelSvm <- train(COD_EVASAO~., data=alunos_dataset, method="svmRadial", trControl=control)
+modelSvm <- train(COD_EVASAO~media+CURSO, data=alunos_dataset, method="svmRadial", trControl=control)
 
 pred<-predict(modelSvm, newdata = particao_teste_completa)
 summary(pred)  
@@ -110,7 +114,7 @@ CrossTable(particao_teste_completa$COD_EVASAO, pred, prop.chisq = FALSE, prop.c 
 
 #Usando RL
 control <- trainControl(method="repeatedcv", number=10, repeats=10)
-modelRl<- train(COD_EVASAO~., data=alunos_dataset, method="glm", trControl=control)
+modelRl<- train(COD_EVASAO~media+CURSO, data=alunos_dataset, method="glm", trControl=control)
 summary(modelRl)$coef
 pred<-predict(modelRl, newdata = particao_teste_completa)
 summary(pred)  
@@ -119,11 +123,11 @@ CrossTable(particao_teste_completa$COD_EVASAO, pred, prop.chisq = FALSE, prop.c 
 
 #Usando C50
 control <- trainControl(method="repeatedcv", number=10, repeats=10)
-modelRl<- train(COD_EVASAO~., data=alunos_dataset, method="C5.0", trControl=control)
-summary(modelRl)
-pred<-predict(modelRl, newdata = particao_teste_completa)
+modelC50<- train(COD_EVASAO~., data=alunos_dataset, method="C5.0", trControl=control)
+summary(modelC50)
+pred<-predict(modelC50, newdata = particao_teste_completa)
 summary(pred)  
-
+CrossTable(particao_teste_completa$COD_EVASAO, pred, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
 
 evasao_model <- C5.0(alunos_dataset[,c(1,2,3)], alunos_dataset$COD_EVASAO, na.omit = T)
 result <- predict(evasao_model,newdata = particao_teste_completa)
