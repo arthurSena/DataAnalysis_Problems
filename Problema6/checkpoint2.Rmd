@@ -52,25 +52,56 @@ write.csv(saida, file = "Saida3_Fera_MediaCurso_C50.csv",row.names=F)
 
 
 ```{r}
+library(plyr)
 library(dplyr, quietly = T, warn.conflicts = F)
 library("gmodels")
 library("C50")
 library("kernlab")
 library(caret)
-
-
 ```
 
+#Predição de Evasão dos feras de 2014.1
+O objetivo desse problema é comparar alguns modelos que tentam predizer se um aluno do primeiro período irá ou não evadir o curso baseado no histórico do mesmo. As nossas variáveis e suas descrições se encontram logo abaixo:
+
+__MATRICULA:__ identificador do aluno
+
+__PERIODO:__ identificador do periodo letivo da universidade (ano.semestre)
+
+__COD_CURSO:__ identificador do curso
+
+__CURSO:__ nome do curso. Cada curso tem seu COD_CURSO
+
+__CODIGO:__ identificador da disciplina que o aluno cursou no periodo
+
+__DISCIPLINA:__ nome da disciplina referente que o aluno cursou no periodo. Cada disciplina tem seu CODIGO
+
+__CREDITOS:__ numero de créditos referente a disciplina
+
+__DEPARTAMENTO:__ departamento que ofertou a disciplina
+
+__MEDIA:__ media do aluno na disciplina (0 a 10). Alunos reprovados por falta numa disciplina recebem 0 e alunos que trancaram a disciplina recebem NA.
+
+__STATUS:__ Aprovado, Reprovado Por Falta, Trancado ou Reprovado. Se refere ao estado final do aluno na disciplina
+
+__PERIODO_INGRESSO:__ periodo letivo da universidade em que o aluno ingressou no curso.
+
+__PERIODO_RELATIVO:__ numero de periodos que o aluno está matriculado na universidade. "1" refere-se ao aluno em seu primeiro periodo, "5" refere-se ao aluno no quinto periodo.
+
+__COD_EVASAO:__ identificador de evasao do aluno. "0" significa que o aluno continuou ativo na universidade no periodo seguinte e "1" significa que o aluno desistiu do curso nesse periodo e não voltou a se matricular no seguinte.
+
+Uma pequena amostra dos dados pode ser visualizada logo abaixo:
 
 ```{r}
-
     treino<- read.csv("training_without_accents.txt")
+    summary(treino)
+    head(treino)[,1:8]
     teste <- read.csv("test_without_accents.csv")
-
-
 ```
 
 #Transforma o dataset de disciplinas para um dataset de alunos
+A fim de obter modelos mais precisos devemos modificar nossos dados originais criando um novo conjunto de dados, onde
+cada observação represente um determinado aluno. Nesse novo dataset, utilizaremos às variáveis CRE e CURSO do aluno para construir nossas modelos e compara-los à respeito do F-measure. Acredito que alunos de cursos de exatas e que apresentem CRE abaixo no primeiro período tenham mais chances de evadir o curso. 
+
 ```{r}
     alunos <- levels(as.factor(treino$MATRICULA))    
     alunos_dataset <- data.frame()
@@ -90,55 +121,16 @@ library(caret)
     alunos_dataset[,1] <-as.numeric(levels(alunos_dataset[,1]))[alunos_dataset[,1]]
     levels(alunos_dataset$CURSO) <- c(0,1)
     alunos_dataset[,3] <-as.numeric(levels(alunos_dataset[,3]))[alunos_dataset[,3]]
-
-#Usando o KNN no caret
-control = trainControl(method = "repeatedcv", number=10,repeats = 10)
-knn_grid = expand.grid(k=c(1:20))
-knn_model = train(COD_EVASAO~.,  data=alunos_dataset ,method="knn",preProcess=c("range"),tuneLength = 5,trControl=control, na.action=na.omit)
-knn_model = train(COD_EVASAO~media+CURSO,  data=alunos_dataset ,method="knn",preProcess=c("range"),tuneGrid = knn_grid,trControl=control, na.action=na.omit)
-# best_knn_model = train(alunos_dataset[,1:3],alunos_dataset[,4],method="knn",preProcess = c("center", "scale"),
-#                  tuneLength = 10,
-#                  trControl = trainControl(method = "cv"))
-
-pred<-predict(knn_model, newdata = as.data.frame(particao_teste_completa),na.action=na.omit)
-summary(pred) 
-CrossTable(particao_teste_completa$COD_EVASAO, pred, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
-
-#Usando o SVM no caret
-control <- trainControl(method="repeatedcv", number=10,repeats=10)
-modelSvm <- train(COD_EVASAO~media+CURSO, data=alunos_dataset, method="svmRadial", trControl=control)
-
-pred<-predict(modelSvm, newdata = particao_teste_completa)
-summary(pred)  
-CrossTable(particao_teste_completa$COD_EVASAO, pred, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
-
-#Usando RL
-control <- trainControl(method="repeatedcv", number=10, repeats=10)
-modelRl<- train(COD_EVASAO~media+CURSO, data=alunos_dataset, method="glm", trControl=control)
-summary(modelRl)$coef
-pred<-predict(modelRl, newdata = particao_teste_completa)
-summary(pred)  
-
-CrossTable(particao_teste_completa$COD_EVASAO, pred, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
-
-#Usando C50
-control <- trainControl(method="repeatedcv", number=10, repeats=10)
-modelC50<- train(COD_EVASAO~., data=alunos_dataset, method="C5.0", trControl=control)
-summary(modelC50)
-pred<-predict(modelC50, newdata = particao_teste_completa)
-summary(pred)  
-CrossTable(particao_teste_completa$COD_EVASAO, pred, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
-
-evasao_model <- C5.0(alunos_dataset[,c(1,2,3)], alunos_dataset$COD_EVASAO, na.omit = T)
-result <- predict(evasao_model,newdata = particao_teste_completa)
-summary(result)
-CrossTable(particao_teste_completa$COD_EVASAO, result, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
-
-
-#Comparando os modelos
-results <- resamples(list(RL=modelRl, KNN=knn_model, SVM=modelSvm))
-
 ```
+
+Assim sendo, usaremos "alunos_dataset" como o conjunto de treinamento. Uma pequena amostra de como ficou nosso conjunto pode ser visto logo abaixo.
+
+```{r}
+  head(alunos_dataset)
+  print("A variável Curso foi modificada, onde o curso de Elétrica é represental pelo número 1 e Enfermagem pelo número 0.")
+```
+
+Os modelos escolhidos para a comparação foram: KNN, Regressão Logistica e C50. A bibliteca "Caret" foi utilizada em ordem de treinar tais modelos. Uma partição de teste foi retirada a partir da partição de treino para efeito de comparar os F-measure's dos modelos. O código se encontra logo abaixo:
 
 #Criar uma partição de treino adequada
 ```{r}
@@ -166,6 +158,462 @@ results <- resamples(list(RL=modelRl, KNN=knn_model, SVM=modelSvm))
     particao_teste_completa[,1] <-as.numeric(levels(particao_teste_completa[,1]))[particao_teste_completa[,1]]
     levels(particao_teste_completa$CURSO) <- c(0,1)
     particao_teste_completa[,3] <-as.numeric(levels(particao_teste_completa[,3]))[particao_teste_completa[,3]]
+```
+
+#Criando e Treinando nossos modelos
+```{r}
+#Usando o KNN
+control = trainControl(method = "repeatedcv", number=10,repeats = 10)
+knn_grid = expand.grid(k=c(1:20))
+# knn_model = train(COD_EVASAO~.,  data=alunos_dataset ,method="knn",preProcess=c("range"),tuneLength = 5,trControl=control, na.action=na.omit)
+knn_model = train(COD_EVASAO~media+CURSO,  data=alunos_dataset ,method="knn",preProcess=c("range"),tuneGrid = knn_grid,trControl=control, na.action=na.omit)
+# best_knn_model = train(alunos_dataset[,1:3],alunos_dataset[,4],method="knn",preProcess = c("center", "scale"),
+#                  tuneLength = 10,
+#                  trControl = trainControl(method = "cv"))
+
+# pred_knn<-predict(knn_model, newdata = as.data.frame(particao_teste_completa),na.action=na.omit)
+# # summary(pred) 
+# CrossTable(particao_teste_completa$COD_EVASAO, pred_knn, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+
+#Usando o SVM no caret
+control <- trainControl(method="repeatedcv", number=10,repeats=10)
+modelSvm <- train(COD_EVASAO~media+CURSO, data=alunos_dataset, method="svmRadial", trControl=control)
+
+# pred_svm<-predict(modelSvm, newdata = particao_teste_completa)
+# summary(pred)  
+# CrossTable(particao_teste_completa$COD_EVASAO, pred_svm, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+
+#Usando RL
+control <- trainControl(method="repeatedcv", number=10, repeats=10)
+modelRl<- train(COD_EVASAO~media+CURSO, data=alunos_dataset, method="glm", trControl=control)
+# summary(modelRl)$coef
+# pred_rl<-predict(modelRl, newdata = particao_teste_completa)
+# summary(pred)  
+# 
+# CrossTable(particao_teste_completa$COD_EVASAO, pred_rl, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+
+#Usando C50
+control <- trainControl(method="repeatedcv", number=10, repeats=10)
+modelC50<- train(COD_EVASAO~media+CURSO, data=alunos_dataset, method="C5.0", trControl=control)
+# summary(modelC50)
+# pred_c50<-predict(modelC50, newdata = particao_teste_completa)
+# summary(pred)  
+# CrossTable(particao_teste_completa$COD_EVASAO, pred, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+
+# evasao_model <- C5.0(alunos_dataset[,c(1,2,3)], alunos_dataset$COD_EVASAO, na.omit = T)
+# result <- predict(evasao_model,newdata = particao_teste_completa)
+# summary(result)
+# CrossTable(particao_teste_completa$COD_EVASAO, result, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+
+
+#Comparando os modelos
+# results <- resamples(list(RL=modelRl, KNN=knn_model, SVM=modelSvm))
+```
+
+#Prevendo Evasao
+```{r}
+#KNN
+pred_knn<-predict(knn_model, newdata = as.data.frame(particao_teste_completa),na.action=na.omit)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_knn, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 111/128
+ recall <- 111/148
+ Fmeasure_knn <-  2 * precision * recall / (precision + recall)
+
+#SVM
+pred_svm<-predict(modelSvm, newdata = particao_teste_completa)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_svm, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 104/122
+ recall <- 104/148
+ Fmeasure_svm <-  2 * precision * recall / (precision + recall)
+
+#REGRESSÃO Log.
+pred_rl<-predict(modelRl, newdata = particao_teste_completa)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_rl, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 104/122
+ recall <- 104/148
+ Fmeasure_rl <-  2 * precision * recall / (precision + recall)
+
+#C50
+pred_c50<-predict(modelC50, newdata = particao_teste_completa)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_c50, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 113/132
+ recall <- 113/148
+ Fmeasure_c50 <-  2 * precision * recall / (precision + recall)
+
+Modelos = c("C50", "KNN", "SVM","RL") 
+Fmeasures = c(Fmeasure_c50,Fmeasure_knn,Fmeasure_svm,Fmeasure_rl)
+df = data.frame(Modelos, Fmeasures)  
+ggplot(df, aes(x = Modelos, y = Fmeasures)) + geom_bar(stat="identity")
+```
+Observando o gráfico notamos que os melhores Fmeasures são aqueles relativos aos modelos C50 e KNN.
+
+#Utilizando variável reprovado_falta
+Acredito que alunos que tenham sido reprovados por falta em alguma disciplina tenham uma probabilidade maior de de evadir o curso. Assim sendo, vamos repetir o processo anterior.
+
+```{r}
+alunos <- levels(as.factor(treino$MATRICULA))    
+alunos_dataset <- data.frame()
+for (aluno in alunos){
+  temp <- filter(treino, aluno == as.character(MATRICULA), na.omit = T)
+  media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
+  COD_EVASAO <- temp[1,14]
+  CURSO <- temp[1,4]
+  REPROVADO_FALTA <-0
+  if (nrow(filter(temp, SITUACAO == "Reprovado por Falta")) > 0){
+    REPROVADO_FALTA <- 1
+  } 
+  alunos_dataset <- rbind(alunos_dataset,data.frame(aluno,media,CURSO,REPROVADO_FALTA,COD_EVASAO),warn.conflicts = F )
+}
+alunos_dataset <- alunos_dataset[complete.cases(alunos_dataset),]
+rownames(alunos_dataset) <- NULL
+alunos_dataset[,"COD_EVASAO"]<- as.factor(alunos_dataset$COD_EVASAO)
+alunos_dataset[,1] <-as.numeric(levels(alunos_dataset[,1]))[alunos_dataset[,1]]
+levels(alunos_dataset$CURSO) <- c(0,1)
+alunos_dataset[,3] <-as.numeric(levels(alunos_dataset[,3]))[alunos_dataset[,3]]
+```
+
+
+#Criar uma partição de treino adequada
+```{r}
+evadiu <- filter(treino, COD_EVASAO == 1, PERIODO_RELATIVO  == 1)
+nao_evadiu <- filter(treino, COD_EVASAO == 0, PERIODO_RELATIVO  == 1)
+particao_teste <- rbind(evadiu[1:1000,],nao_evadiu[1:1200,])
+
+particao_teste[,"COD_EVASAO"]<- as.factor(particao_teste$COD_EVASAO)
+particao_teste[,"X"] <- NULL
+
+alunos_Teste <- levels(as.factor(particao_teste$MATRICULA))    
+particao_teste_completa <- data.frame()
+for (aluno in alunos_Teste){
+  temp <- filter(particao_teste, aluno == as.character(MATRICULA), na.omit = T)
+  media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
+  COD_EVASAO <- temp[1,14]
+  CURSO <- temp[1,4]
+  REPROVADO_FALTA <- 0
+  if (nrow(filter(temp, SITUACAO == "Reprovado por Falta")) > 0){
+    REPROVADO_FALTA <- 1
+  } 
+  particao_teste_completa <- rbind(particao_teste_completa,data.frame(aluno,media,CURSO,REPROVADO_FALTA,COD_EVASAO))
+}
+particao_teste_completa <- particao_teste_completa[complete.cases(particao_teste_completa),]
+particao_teste_completa[,1] <-as.numeric(levels(particao_teste_completa[,1]))[particao_teste_completa[,1]]
+levels(particao_teste_completa$CURSO) <- c(0,1)
+particao_teste_completa[,3] <-as.numeric(levels(particao_teste_completa[,3]))[particao_teste_completa[,3]]
+```
+
+#Criando e Treinando nossos modelos
+```{r}
+#Usando o KNN
+control = trainControl(method = "repeatedcv", number=10,repeats = 10)
+knn_grid = expand.grid(k=c(1:20))
+knn_model = train(COD_EVASAO~media+CURSO+REPROVADO_FALTA,  data=alunos_dataset ,method="knn",preProcess=c("range"),tuneGrid = knn_grid,trControl=control, na.action=na.omit)
+
+#Usando o SVM
+control <- trainControl(method="repeatedcv", number=10,repeats=10)
+modelSvm <- train(COD_EVASAO~media+CURSO+REPROVADO_FALTA, data=alunos_dataset, method="svmRadial", trControl=control)
+
+#Usando RL
+control <- trainControl(method="repeatedcv", number=10, repeats=10)
+modelRl<- train(COD_EVASAO~media+CURSO+REPROVADO_FALTA, data=alunos_dataset, method="glm", trControl=control)
+
+#Usando C50
+control <- trainControl(method="repeatedcv", number=10, repeats=10)
+modelC50<- train(COD_EVASAO~media+CURSO+REPROVADO_FALTA, data=alunos_dataset, method="C5.0", trControl=control)
+```
+
+
+#Prevendo Evasao
+
+```{r}
+#KNN
+pred_knn<-predict(knn_model, newdata = as.data.frame(particao_teste_completa),na.action=na.omit)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_knn, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 110/127
+ recall <- 110/148
+ Fmeasure_knn <-  2 * precision * recall / (precision + recall)
+
+#SVM
+pred_svm<-predict(modelSvm, newdata = particao_teste_completa)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_svm, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 104/122
+ recall <- 104/148
+ Fmeasure_svm <-  2 * precision * recall / (precision + recall)
+
+#REGRESSÃO Log.
+pred_rl<-predict(modelRl, newdata = particao_teste_completa)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_rl, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 103/120
+ recall <- 103/148
+ Fmeasure_rl <-  2 * precision * recall / (precision + recall)
+
+#C50
+pred_c50<-predict(modelC50, newdata = particao_teste_completa)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_c50, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 113/132
+ recall <- 113/148
+ Fmeasure_c50 <-  2 * precision * recall / (precision + recall)
+
+Modelos = c("C50", "KNN", "SVM","RL") 
+Fmeasures = c(Fmeasure_c50,Fmeasure_knn,Fmeasure_svm,Fmeasure_rl)
+df = data.frame(Modelos, Fmeasures)  
+ggplot(df, aes(x = Modelos, y = Fmeasures)) + geom_bar(stat="identity")
+```
+
+Observando os resultados podemos dizer que não conseguimos melhorar nossos modelos. Ainda sim, podemos fazer mais uma tentativa utilizando a variável número de reprovações. Essa variável vai representar a quantidade de disciplinas que determinado aluno reprovou. Acredito que se ele reprovou muitas disciplinas, então tem uma possibilidade maior de evadir o curso. Assim sendo, vamos novamente repetir o processo.
+
+#Utilizando número de reprovações
+```{r}
+alunos <- levels(as.factor(treino$MATRICULA))    
+alunos_dataset <- data.frame()
+for (aluno in alunos){
+  temp <- filter(treino, aluno == as.character(MATRICULA), na.omit = T)
+  media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
+  COD_EVASAO <- temp[1,14]
+  CURSO <- temp[1,4]
+  REPROVADO_FALTA <-0
+  if (nrow(filter(temp, SITUACAO == "Reprovado por Falta")) > 0){
+    REPROVADO_FALTA <- 1
+  } 
+  N_REPROVACAO <- nrow(filter(temp,  SITUACAO %in%  c("Reprovado") | SITUACAO %in%  c("Reprovado por Falta")))
+  alunos_dataset <- rbind(alunos_dataset,data.frame(aluno,media,CURSO,REPROVADO_FALTA,N_REPROVACAO,COD_EVASAO),warn.conflicts = F )
+}
+alunos_dataset <- alunos_dataset[complete.cases(alunos_dataset),]
+rownames(alunos_dataset) <- NULL
+alunos_dataset[,"COD_EVASAO"]<- as.factor(alunos_dataset$COD_EVASAO)
+alunos_dataset[,1] <-as.numeric(levels(alunos_dataset[,1]))[alunos_dataset[,1]]
+levels(alunos_dataset$CURSO) <- c(0,1)
+alunos_dataset[,3] <-as.numeric(levels(alunos_dataset[,3]))[alunos_dataset[,3]]
+```
+
+
+#Criar uma partição de treino adequada
+```{r}
+evadiu <- filter(treino, COD_EVASAO == 1, PERIODO_RELATIVO  == 1)
+nao_evadiu <- filter(treino, COD_EVASAO == 0, PERIODO_RELATIVO  == 1)
+particao_teste <- rbind(evadiu[1:1000,],nao_evadiu[1:1200,])
+
+particao_teste[,"COD_EVASAO"]<- as.factor(particao_teste$COD_EVASAO)
+particao_teste[,"X"] <- NULL
+
+alunos_Teste <- levels(as.factor(particao_teste$MATRICULA))    
+particao_teste_completa <- data.frame()
+for (aluno in alunos_Teste){
+  temp <- filter(particao_teste, aluno == as.character(MATRICULA), na.omit = T)
+  media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
+  COD_EVASAO <- temp[1,14]
+  CURSO <- temp[1,4]
+  REPROVADO_FALTA <- 0
+  if (nrow(filter(temp, SITUACAO == "Reprovado por Falta")) > 0){
+    REPROVADO_FALTA <- 1
+  } 
+  N_REPROVACAO <- nrow(filter(temp,  SITUACAO %in%  c("Reprovado") | SITUACAO %in%  c("Reprovado por Falta")))
+  particao_teste_completa <- rbind(particao_teste_completa,data.frame(aluno,media,CURSO,REPROVADO_FALTA, N_REPROVACAO ,COD_EVASAO))
+}
+particao_teste_completa <- particao_teste_completa[complete.cases(particao_teste_completa),]
+particao_teste_completa[,1] <-as.numeric(levels(particao_teste_completa[,1]))[particao_teste_completa[,1]]
+levels(particao_teste_completa$CURSO) <- c(0,1)
+particao_teste_completa[,3] <-as.numeric(levels(particao_teste_completa[,3]))[particao_teste_completa[,3]]
+```
+
+#Criando e Treinando nossos modelos
+```{r}
+#Usando o KNN
+control = trainControl(method = "repeatedcv", number=10,repeats = 10)
+knn_grid = expand.grid(k=c(1:20))
+knn_model = train(COD_EVASAO~media+CURSO+REPROVADO_FALTA+ N_REPROVACAO,data=alunos_dataset ,method="knn",preProcess=c("range"),tuneGrid = knn_grid,trControl=control, na.action=na.omit)
+
+#Usando o SVM
+control <- trainControl(method="repeatedcv", number=10,repeats=10)
+modelSvm <- train(COD_EVASAO~media+CURSO+REPROVADO_FALTA+ N_REPROVACAO, data=alunos_dataset, method="svmRadial", trControl=control)
+
+#Usando RL
+control <- trainControl(method="repeatedcv", number=10, repeats=10)
+modelRl<- train(COD_EVASAO~media+CURSO+REPROVADO_FALTA+ N_REPROVACAO, data=alunos_dataset, method="glm", trControl=control)
+
+#Usando C50
+control <- trainControl(method="repeatedcv", number=10, repeats=10)
+modelC50<- train(COD_EVASAO~media+CURSO+REPROVADO_FALTA+ N_REPROVACAO, data=alunos_dataset, method="C5.0", trControl=control)
+```
+
+
+#Prevendo Evasao
+```{r}
+#KNN
+pred_knn<-predict(knn_model, newdata = as.data.frame(particao_teste_completa),na.action=na.omit)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_knn, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 108/125
+ recall <- 108/148
+ Fmeasure_knn <-  2 * precision * recall / (precision + recall)
+
+#SVM
+pred_svm<-predict(modelSvm, newdata = particao_teste_completa)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_svm, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 107/125
+ recall <- 107/148
+ Fmeasure_svm <-  2 * precision * recall / (precision + recall)
+
+#REGRESSÃO Log.
+pred_rl<-predict(modelRl, newdata = particao_teste_completa)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_rl, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 103/120
+ recall <- 103/148
+ Fmeasure_rl <-  2 * precision * recall / (precision + recall)
+
+#C50
+pred_c50<-predict(modelC50, newdata = particao_teste_completa)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_c50, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 113/132
+ recall <- 113/148
+ Fmeasure_c50 <-  2 * precision * recall / (precision + recall)
+
+Modelos = c("C50", "KNN", "SVM","RL") 
+Fmeasures = c(Fmeasure_c50,Fmeasure_knn,Fmeasure_svm,Fmeasure_rl)
+df = data.frame(Modelos, Fmeasures)  
+ggplot(df, aes(x = Modelos, y = Fmeasures)) + geom_bar(stat="identity")
+```
+
+#Utilizando variável Número de Aprovação
+Usando a lógica inversa poderíamos deduzir que alunos com alto número de aprovação apresentem uma menor chance de evadir o curso. Desse modo, vamos usar essa variável na criação dos modelos.
+
+```{r}
+alunos <- levels(as.factor(treino$MATRICULA))    
+alunos_dataset <- data.frame()
+for (aluno in alunos){
+  temp <- filter(treino, aluno == as.character(MATRICULA), na.omit = T)
+  media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
+  COD_EVASAO <- temp[1,14]
+  CURSO <- temp[1,4]
+  REPROVADO_FALTA <-0
+  if (nrow(filter(temp, SITUACAO == "Reprovado por Falta")) > 0){
+    REPROVADO_FALTA <- 1
+  } 
+  N_REPROVACAO <- nrow(filter(temp,  SITUACAO %in%  c("Reprovado") | SITUACAO %in%  c("Reprovado por Falta")))
+  N_APROVACAO <- nrow(filter(temp,  SITUACAO == "Aprovado"))
+  alunos_dataset <- rbind(alunos_dataset,data.frame(aluno,media,CURSO,REPROVADO_FALTA,N_REPROVACAO,N_APROVACAO,COD_EVASAO),warn.conflicts = F )
+}
+alunos_dataset <- alunos_dataset[complete.cases(alunos_dataset),]
+rownames(alunos_dataset) <- NULL
+alunos_dataset[,"COD_EVASAO"]<- as.factor(alunos_dataset$COD_EVASAO)
+alunos_dataset[,1] <-as.numeric(levels(alunos_dataset[,1]))[alunos_dataset[,1]]
+levels(alunos_dataset$CURSO) <- c(0,1)
+alunos_dataset[,3] <-as.numeric(levels(alunos_dataset[,3]))[alunos_dataset[,3]]
+```
+
+
+#Criar uma partição de treino adequada
+```{r}
+evadiu <- filter(treino, COD_EVASAO == 1, PERIODO_RELATIVO  == 1)
+nao_evadiu <- filter(treino, COD_EVASAO == 0, PERIODO_RELATIVO  == 1)
+particao_teste <- rbind(evadiu[1:1000,],nao_evadiu[1:1200,])
+
+particao_teste[,"COD_EVASAO"]<- as.factor(particao_teste$COD_EVASAO)
+particao_teste[,"X"] <- NULL
+
+alunos_Teste <- levels(as.factor(particao_teste$MATRICULA))    
+particao_teste_completa <- data.frame()
+for (aluno in alunos_Teste){
+  temp <- filter(particao_teste, aluno == as.character(MATRICULA), na.omit = T)
+  media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
+  COD_EVASAO <- temp[1,14]
+  CURSO <- temp[1,4]
+  REPROVADO_FALTA <- 0
+  if (nrow(filter(temp, SITUACAO == "Reprovado por Falta")) > 0){
+    REPROVADO_FALTA <- 1
+  } 
+  N_REPROVACAO <- nrow(filter(temp,  SITUACAO %in%  c("Reprovado") | SITUACAO %in%  c("Reprovado por Falta")))
+  N_APROVACAO <- nrow(filter(temp,  SITUACAO == "Aprovado"))
+  particao_teste_completa <- rbind(particao_teste_completa,data.frame(aluno,media,CURSO,REPROVADO_FALTA, N_REPROVACAO,N_APROVACAO ,COD_EVASAO))
+}
+particao_teste_completa <- particao_teste_completa[complete.cases(particao_teste_completa),]
+particao_teste_completa[,1] <-as.numeric(levels(particao_teste_completa[,1]))[particao_teste_completa[,1]]
+levels(particao_teste_completa$CURSO) <- c(0,1)
+particao_teste_completa[,3] <-as.numeric(levels(particao_teste_completa[,3]))[particao_teste_completa[,3]]
+```
+
+#Criando e Treinando nossos modelos
+```{r}
+#Usando o KNN
+control = trainControl(method = "repeatedcv", number=10,repeats = 10)
+knn_grid = expand.grid(k=c(1:20))
+knn_model = train(COD_EVASAO~media+CURSO+REPROVADO_FALTA+ N_REPROVACAO+N_APROVACAO,data=alunos_dataset ,method="knn",preProcess=c("range"),tuneGrid = knn_grid,trControl=control, na.action=na.omit)
+
+#Usando o SVM
+control <- trainControl(method="repeatedcv", number=10,repeats=10)
+modelSvm <- train(COD_EVASAO~media+CURSO+REPROVADO_FALTA+ N_REPROVACAO+N_APROVACAO, data=alunos_dataset, method="svmRadial", trControl=control)
+
+#Usando RL
+control <- trainControl(method="repeatedcv", number=10, repeats=10)
+modelRl<- train(COD_EVASAO~media+CURSO+REPROVADO_FALTA+ N_REPROVACAO+N_APROVACAO, data=alunos_dataset, method="glm", trControl=control)
+
+#Usando C50
+control <- trainControl(method="repeatedcv", number=10, repeats=10)
+modelC50<- train(COD_EVASAO~media+CURSO+REPROVADO_FALTA+ N_REPROVACAO+N_APROVACAO, data=alunos_dataset, method="C5.0", trControl=control)
+```
+
+
+#Prevendo Evasao
+```{r}
+#KNN
+pred_knn<-predict(knn_model, newdata = as.data.frame(particao_teste_completa),na.action=na.omit)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_knn, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 109/126
+ recall <- 109/148
+ Fmeasure_knn <-  2 * precision * recall / (precision + recall)
+
+#SVM
+pred_svm<-predict(modelSvm, newdata = particao_teste_completa)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_svm, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 107/125
+ recall <- 107/148
+ Fmeasure_svm <-  2 * precision * recall / (precision + recall)
+
+#REGRESSÃO Log.
+pred_rl<-predict(modelRl, newdata = particao_teste_completa)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_rl, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 107/125
+ recall <- 107/148
+ Fmeasure_rl <-  2 * precision * recall / (precision + recall)
+
+#C50
+pred_c50<-predict(modelC50, newdata = particao_teste_completa)
+CrossTable(particao_teste_completa$COD_EVASAO, pred_c50, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual', 'predicted'))
+ precision  <- 113/131
+ recall <- 113/148
+ Fmeasure_c50 <-  2 * precision * recall / (precision + recall)
+
+Modelos = c("C50", "KNN", "SVM","RL") 
+Fmeasures = c(Fmeasure_c50,Fmeasure_knn,Fmeasure_svm,Fmeasure_rl)
+df = data.frame(Modelos, Fmeasures)  
+ggplot(df, aes(x = Modelos, y = Fmeasures)) + geom_bar(stat="identity")
+```
+
+*Notamos que o Fmeasure do modelo de Reg. Log. aumentou após o acréscimo da variável N_APROVACAO.
+
+```{r}
+#     evadiu <- filter(treino, COD_EVASAO == 1, PERIODO_RELATIVO  == 1)
+#     nao_evadiu <- filter(treino, COD_EVASAO == 0, PERIODO_RELATIVO  == 1)
+#     particao_teste <- rbind(evadiu[1:1000,],nao_evadiu[1:1200,])
+#     
+#     particao_teste[,"COD_EVASAO"]<- as.factor(particao_teste$COD_EVASAO)
+#     particao_teste[,"X"] <- NULL
+# 
+# 
+#       alunos_Teste <- levels(as.factor(particao_teste$MATRICULA))    
+#       particao_teste_completa <- data.frame()
+#       for (aluno in alunos_Teste){
+#             temp <- filter(particao_teste, aluno == as.character(MATRICULA), na.omit = T)
+#             media <- sum(as.numeric(levels(temp$MEDIA))[temp$MEDIA],na.rm = T)/nrow(temp)
+# #            COD_EVASAO <- particao_teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(COD_EVASAO)
+# #             CURSO <- particao_teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(CURSO)
+# #            SITUACAO <- particao_teste %>% filter( aluno ==  as.character(MATRICULA)) %>% select(SITUACAO)
+#             COD_EVASAO <- temp[1,14]
+#             CURSO <- temp[1,4]
+#             particao_teste_completa <- rbind(particao_teste_completa,data.frame(aluno,media,CURSO,COD_EVASAO))
+#       }
+#     particao_teste_completa <- particao_teste_completa[complete.cases(particao_teste_completa),]
+#     particao_teste_completa[,1] <-as.numeric(levels(particao_teste_completa[,1]))[particao_teste_completa[,1]]
+#     levels(particao_teste_completa$CURSO) <- c(0,1)
+#     particao_teste_completa[,3] <-as.numeric(levels(particao_teste_completa[,3]))[particao_teste_completa[,3]]
 
 ```
 
