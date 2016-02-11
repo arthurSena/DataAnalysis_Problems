@@ -1,0 +1,96 @@
+---
+title: "CheckPoint1"
+author: "Arthur Sena"
+date: "02/10/2016"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+#CheckPoint 1
+## Esse relatório tem como objetivo responder às perguntas abaixo:
+
+###Há algo surpreendente ou estranho nos dados? Como você sugere que um analista de dados lide com a parte estranha?
+Uma boa forma de notar algo estranho nos dados é utilizando um boxplot, onde conseguimos visualizar alguns possíveis 'outliers'. 
+
+```{r, warning=FALSE}
+    data <- read.csv("alunosUFCGAnon.csv")
+    qplot(y=data$Media_Disciplina, x= 1, geom = "boxplot")
+```
+
+No gráfico acima é possível notar uma boa quantidade de "outliers" na varíavel Media_Disciplina. Nós podemos ser um pouco mais curiosos e agrupar tal variável por departamento e observar o que ocorre.
+```{r , warning=FALSE}
+ qplot(factor(Departamento), Media_Disciplina, data = data, geom = "boxplot") + theme(text = element_text(size=10),axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Observando o gráfico acima, o tamanho variável dos boxplot's talvez indique uma diferença de quantidade de dados por departamento. Podemos criar um gráfico de barras com a quantidade de dados por departamentos.
+
+```{r, warning=FALSE}
+     barGraph <- ggplot(data, aes(factor(Departamento)))
+     barGraph+geom_bar() + theme(text = element_text(size=10),axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Analisando o gráfico, constatamos que a nossa supeita estava certa. Realmente, existe departamentos com poucos dados e outros com muitos. Tanto os outlier's quanto essa diferença na quantidade dos dados por departamento deve ser levado em conta por qualquer análise que seja feita nesse dataset, pois tais características podem influênciar nas conclusões. Assim sendo, uma boa dica para lidar com os outlier's é utilizar estratégias que evitem/amenizem sua influência, tal como a Mediana, pois a mesma é mais indicada a se utilizar nesses casos, já que não é tão facilmente influênciada tanto quanto a Média.
+
+### Em qual curso e em qual período estão as melhores e piores notas? Por que você acha que isso acontece em cada caso?
+Uma boa forma de responder tal pergunta é agrupando os nossos dados e aplicando uma medida de tendência central. Nesse caso, vamos usar a mediana a fim de evitar o efeito de outlier's.
+
+Agrupando, primeiramente, por curso
+```{r, warning=FALSE}
+    by_course <- group_by(data, Nome_Curso) #Agrupando nossos dados por curso
+    best_grades <- summarise(by_course, mediana = median(Media_Disciplina, na.rm = T) )#Sumarizando e calculando a mediana das notas
+    head(arrange(best_grades, mediana)) # Piores notas por curso 
+    head(arrange(best_grades, desc(mediana))) #Melhores notas por curso
+```
+
+Analisando os data-frame's acima podemos notar que o curso de DIREITO - M e ESTATÍSTICA - D apresentam as melhores e piores notas respectivamente. Agora vamos agrupar por período.
+
+```{r, warning=FALSE}
+    by_course <- group_by(data, Periodo) #Agrupando nossos dados por periodo
+    best_grades <- summarise(by_course, mediana = median(Media_Disciplina, na.rm = T) )#Sumarizando e calculando a mediana das notas
+    head(arrange(best_grades, mediana)) # Piores notas por periodo 
+    head(arrange(best_grades, desc(mediana))) #Melhores notas por periodo
+```
+Agrupando por período, notamos que o período de 2002.1 e 2003.2 apresentam as melhores e piores notas respectivamente.
+
+__Conclusão:__Quando agrupamos por curso notamos que existe uma certa predominância de cursos de exatas dentre os cursos com um desempenho pior enquanto que os cursos de humanas estão mais presentes no conjunto dos cursos com melhor desempenho. Pode existir diversas explicações para tal divisão, porém não podemos afirmar nada com certeza, pois nossa amostra não é justa com todos os cursos, já que temos cursos com mais dados do que outros. Agora analisando o agrupamento por periodo notamos que não há muita discrepância entre os períodos com melhor e pior desempenho. Ou seja, podemos dizer que, segundo nossos dados, a variável periodo não apresenta muita influência na mediana das notas das diciplinas.
+
+### Quão desiguais são os notas entre os cursos e os períodos como um todo? Há cursos mais desiguais?
+Podemos utilizar boxplot's para responder tal pergunta. Primeiro vamos agrupar por periodo e aplicar boxplot's.
+
+```{r, warning=FALSE}
+ qplot(factor(Periodo), Media_Disciplina, data = data, geom = "boxplot") + theme(text = element_text(size=10),axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Notamos claramente que a mediana das notas mantém-se, praticamente, constante em todos os períodos. Ou seja, tal gráfico reforça a conclusão obtida na questão anterior. Agora vamos observar o agrupamento de cursos. 
+
+```{r, warning=FALSE}
+ qplot(factor(Nome_Curso), Media_Disciplina, data = data, geom = "boxplot") + theme(text = element_text(size=10),axis.text.x = element_text(angle = 90, hjust = 1)) + scale_x_discrete(expand=c(-0.9, 0))
+```
+
+Notamos claramente que a mediana das notas varia bastante dependendo do curso. Novamente, tal gráfico reforça a conclusão obtida na questão anterior. Notamos também que os cursos de Metereologia e Estatística apresentam medianas bem desiguais em relação ao resto dos cursos.
+
+### Quais unidades acadêmicas estão mais co-relacionadas em relação às notas dos alunos?
+Novamente uma função de agrupamento por unidade acadêmica junto com boxplot's nos ajuda a responder tal questionamento.
+
+```{r, warning=FALSE}
+ qplot(factor(Departamento), Media_Disciplina, data = data, geom = "boxplot") + theme(text = element_text(size=10),axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Observando o gráfico acima é fácil notar que há certos departamentos mais semelhante em relação às notas do que outros. Por exemplo, Unid. Acad. de Ciências Contábeis, da Saúde e Biológicas apresentam uma mediana de notas bastante similar. 
+
+Podemos ser um pouco mais curiosos e visualizar a mediana de notas por departamento em um gráfico de barras.
+```{r, warning=FALSE}
+    by_course <- group_by(data, Departamento) #Agrupando nossos dados por curso
+    best_grades <- summarise(by_course, mediana = median(Media_Disciplina, na.rm = T) )#Sumarizando e calculando a mediana das notas
+    best_grades$Departamento_ordenado <- reorder(best_grades$Departamento, best_grades$mediana)
+    barGraph <- ggplot(best_grades, aes(x = factor(Departamento_ordenado), y = mediana))
+    barGraph + geom_bar(stat = "identity") + theme(text = element_text(size=10),axis.text.x = element_text(angle = 90, hjust = 1)) 
+```
+
+Observando o gráfico notamos que as informações coincidem com os boxplot's da visualização anterior.
+
+
