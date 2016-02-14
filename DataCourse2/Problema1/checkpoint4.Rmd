@@ -1,0 +1,132 @@
+---
+title: "Checkpoint4"
+author: "Arthur Sena"
+date: "02/13/2016"
+output: html_document
+---
+
+##Importando Bibliotecas e Configurando Ambiente
+```{r warning=FALSE, comment=NA}
+    library(rCharts)
+    library(plyr)
+    library(dplyr)
+    library(ggplot2)
+    library(scales)
+    options(RCHART_WIDTH = 600, RCHART_HEIGHT = 400)
+    knitr::opts_chunk$set(comment = NA, results = 'asis', tidy = F, message = F)
+```
+
+#Descrição dos Dados
+
+Os dados representam uma visão do banco de dados do controle acadêmico da UFCG. Os campos são praticamente auto-explicativos, com excessão talvez dos seguintes campos que são explicados abaixo:
+
+* Cod_Evasao = 0 se o aluno nao evadiu ao fim do primeiro periodo e 1 se ele evadiu.
+* Credito_Curso = total de créditos necessários para o aluno concluir o curso.
+* Periodo_Ingresso = periodo que o aluno entrou no curso.
+
+Antes de fazer uma análise mais profunda, é sempre bom realizar algumas visualizações para detectar algo estranho nos nossos dados. Uma boa forma de fazer isso é usando boxPlot e histograma.
+
+```{r, warning=FALSE}
+    data <- read.csv("/home/arthur/Documents/AD2/Problema1/alunosUFCGAnon.csv")
+    ggplot(data, aes(Media_Disciplina)) +geom_histogram(binwidth = 1) + scale_y_continuous(labels = comma)
+```
+
+Olhando o histograma acima notamos que uma boa parte dos dados se encontra entre a faixa de 7 - 8. Vamos ser mais curiosos e construir um boxplot.
+
+```{r, warning=FALSE}
+    qplot(y=data$Media_Disciplina, x= 1, geom = "boxplot", colour = I("#3366FF")) 
+```
+
+Observando o boxplot notamos que existem alguns outlier's nas notas dos alunos, ou seja, devemos usar métodos que diminuam ao máximo a influência de tais dados nas nossas análises a fim de não obter uma conclusão errônea.
+
+#Minhas Perguntas 
+
+Com esse dados em mãos é possível fazer algumas consultas afim de tentar responder algumas perguntas. Assim sendo, eu selecionei quatro perguntas que eu considero interessantes e que podem nos dar uma visão do cenário no qual os alunos da UFCG estão inseridos. As perguntas e suas, respectivas, respostas se encontram abaixo:
+
+##1) Como é a distribuição do CRA dos alunos de Computação ?
+Vamos utilizar um histograma para responder esta questão, mas antes temos que calcular o CRA de cada aluno de computação.
+
+```{r, warning=FALSE, comment=NA}
+       computacao <- filter(data, Nome_Curso == "CIÊNCIA DA COMPUTAÇÃO - D")
+       computacao <- computacao[complete.cases(computacao),]
+       computacao$Horas_aula <- computacao$Creditos*15
+       por_aluno <- group_by(computacao, Matricula) %>% mutate(totalHoras = sum(Horas_aula)) %>% summarise(CRA = sum(Horas_aula*Media_Disciplina/totalHoras), Periodo_Ingresso = Periodo_Ingresso[1]) 
+       ggplot(por_aluno, aes(CRA)) +geom_histogram(binwidth = 1)
+```
+
+Vemos que uma boa parte do CRA dos alunos de Computação se encontram entre 7 e 8.
+
+##2) O desempenho dos alunos dos Departamentos de Eng. Elétrica e Sistemas de Computação aumentou ou diminiu ao longo dos períodos ?
+A fim de responder esta pergunta vamos agrupar nossos dados por departamentos e períodos, filtrar os departamentos que nos interessa e por fim calcular a mediana das notas dos alunos. 
+
+```{r}
+    por_Periodo <- group_by(data, Periodo, Departamento)
+    notas_periodo <- summarise(por_Periodo, medianaNota = median(Media_Disciplina, na.rm = T))
+    notas_periodo <-  notas_periodo[complete.cases(notas_periodo),]
+    notas_periodo_eletrica_cc <- filter(notas_periodo, Departamento == "UNID. ACAD. DE ENGENHARIA ELÉTRICA" | Departamento == "UNID. ACAD. DE SISTEMAS E COMPUTAÇÃO")
+    temp <- hPlot(x = "Periodo", y = "medianaNota", group = "Departamento", data = notas_periodo_eletrica_cc)
+    temp$print('iframesrc',  include_assets=TRUE)
+```
+
+Analisando o gráfico acima, notamos que ambos os departamentos tiveram algumas quedas com relação as notas dos alunos, porém é interessante notar que o Departamento de Eng. Elétrica oscilou bem mais que o de Sist. e Computação durante o mesmo espaço de tempo.  
+
+Contudo, nós podemos fazer uma análise um pouco mais criteriosa e construir os boxplot's da variável "Media_Disciplina" agrupando pelos departamentos que nos interessa.
+
+```{r, warning=FALSE}
+     qplot(factor(Periodo), Media_Disciplina, data = filter(data,Departamento == "UNID. ACAD. DE SISTEMAS E COMPUTAÇÃO"), geom = "boxplot") + ggtitle("UNID. ACAD. DE SISTEMAS E COMPUTAÇÃO")+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
+     qplot(factor(Periodo), Media_Disciplina, data = filter(data,Departamento == "UNID. ACAD. DE ENGENHARIA ELÉTRICA"), geom = "boxplot") + ggtitle("UNID. ACAD. DE ENGENHARIA ELÉTRICA") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Olhando os gráficos acima já não temos tanta certeza sobre o aumento ou diminuição das notas ao longo dos períodos, pois muitos boxplot's estão sobrepondo um ao outro, ou seja, necessitaríamos de mais dados para concluir nossa análise.
+
+##3) Quais tipos de cadeiras apresentam uma maior evasão de alunos: Obrigatórias ou Optativas ? ?
+Vamos utilizar porcentagem de evasão e não evasão, já que a quantidade de cadeiras Obrigatórias e Optativas são diferentes. Assim sendo, vamos agrupar nossos dados pelas variáveis "Cod_Evasao" e "Tipo" e a partir delas calcular a porcentagem de pessoas que evadiram cada tipo de disciplina.
+
+```{r, warning=FALSE, comment=NA}
+    
+    por_Cod_Evasao_Tipo <- group_by(data, Cod_Evasao, Tipo)
+    alunos_evasao_tipo <- summarise(por_Cod_Evasao_Tipo, alunosQtd = n())
+    alunos_evasao_tipo$Cod_Evasao <- as.factor(alunos_evasao_tipo$Cod_Evasao)
+     
+    alunos_evasao_tipo <- alunos_evasao_tipo %>%
+                            group_by(Tipo) %>%
+                              mutate(countT= sum(alunosQtd)) %>%
+                                group_by(Cod_Evasao, add=TRUE) %>%
+                                  mutate(Porcentagem=paste0(round(100*alunosQtd/countT,2)))
+    alunos_evasao_tipo$Cod_Evasao <- revalue(alunos_evasao_tipo$Cod_Evasao, c("0"="Nao_Evadiu", "1"="Evadiu"))
+    n1 <- nPlot(Porcentagem ~ Tipo, group = "Cod_Evasao", data = alunos_evasao_tipo, type = "multiBarChart")
+    n1$print('iframesrc1',  include_assets=TRUE)
+```
+
+Analisando o gráfico, notamos que, percentualmente falando, existe uma ligeira maior evasão nas disciplinas obrigatórias. 
+
+##4) Quais são os departamentos que mais reprovam e aprovam dentro do Curso de Computação ? 
+Para resolver essa questão precisamos agrupar nossos dados por Departamentos e pela Situação do aluno na disciplina. Também, devemos lembrar que cada departamento apresenta uma quantidade de disciplinas diferente dentro da grade de Computação. Assim sendo, vamos utilizar porcentagem de alunos em vez de um valor absoluto.
+
+```{r warning=FALSE, comment=NA}
+    computacao <- filter(data, Nome_Curso == "CIÊNCIA DA COMPUTAÇÃO - D")
+    por_Disciplina <- group_by(computacao,Departamento, Situacao)
+    alunos_situacao_disciplina <- summarise(por_Disciplina, alunosQtd = n())
+
+    alunos_situacao_disciplina <- alunos_situacao_disciplina %>%
+                                    group_by(Departamento) %>%
+                                      mutate(countT= sum(alunosQtd)) %>%
+                                        group_by(Situacao, add=TRUE) %>%
+                                          mutate(Porcentagem=paste0(round(100*alunosQtd/countT,2)))
+                                            alunos_situacao_disciplina$Porcentagem <-as.numeric(alunos_situacao_disciplina$Porcentagem)
+
+d1 <- dPlot(
+    x = "Departamento",
+    y = "Porcentagem",
+    groups = "Situacao",
+    data = alunos_situacao_disciplina,
+    height = 400
+   , width = 600
+   , bounds = list( x = 100, y = 100, width = 400, height = 150),
+    type = "bar"
+)
+
+d1$print("iframesrc2", include_assets=TRUE)
+```
+
+Observando o gráfico notamos que o Dept. de Matemática é o que mais reprova dentro do Curso de Computação e que o Dept. de Artes, seguido de perto pelos de Educação e Sist. de Computação são, os que mais aprovam alunos.
