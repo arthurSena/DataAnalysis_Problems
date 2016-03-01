@@ -12,5 +12,5 @@ ggplot(porcentagem_acima_media, aes(Periodo_Ingresso, Qtd)) +
 
 p <- ggplot(porcentagem_acima_media, aes(x=Periodo_Ingresso, y=Qtd, group=AcimaMedia))
 p + geom_line()
-
+temp <- filter(temp, Periodo_Ingresso != 1999.1, Periodo_Ingresso != 1999.2)
 hPlot(x = "Periodo_Ingresso", y = "Porcentagem", group = "AcimaMedia", data = temp)

@@ -35,6 +35,7 @@ Olhando o histograma acima notamos que uma boa parte dos dados se encontra entre
 
 ```{r, warning=FALSE}
     qplot(y=data$Media_Disciplina, x= 1, geom = "boxplot", colour = I("#3366FF")) 
+    summary(data$Media_Disciplina)
 ```
 
 Observando o boxplot notamos que existem alguns outlier's nas notas dos alunos, ou seja, devemos usar métodos que diminuam ao máximo a influência de tais dados nas nossas análises a fim de não obter uma conclusão errônea.
