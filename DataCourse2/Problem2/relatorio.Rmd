@@ -1,0 +1,87 @@
+---
+title: "Untitled"
+author: "Arthur Sena"
+date: "03/01/2016"
+output: html_document
+---
+
+
+#Descriçao dos dados
+Os dados são referentes aos usuários de ônibus de Curitiba, onde cada linha do arquivo segue o seguinte padrão: 
+
+```{r echo=FALSE, warning=FALSE}
+   library(plyr)
+  library(rjson)
+   json_file <- '[{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00181","NUMEROCARTAO":"0002624774","DATAUTILIZACAO":"20/10/15 17:35:27,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00994","NUMEROCARTAO":"0002575080","DATAUTILIZACAO":"20/10/15 18:25:34,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00232","NUMEROCARTAO":"0002849283","DATAUTILIZACAO":"20/10/15 09:49:50,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00232","NUMEROCARTAO":"0001502669","DATAUTILIZACAO":"20/10/15 13:07:02,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00998","NUMEROCARTAO":"0003535943","DATAUTILIZACAO":"20/10/15 09:55:50,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00998","NUMEROCARTAO":"0003496859","DATAUTILIZACAO":"20/10/15 12:37:20,000000"}]'
+   json_data <- fromJSON(json_file)
+   data <- do.call("rbind", json_data)
+   head(data)
+```
+
+Analisando os dados acima, vamos utilizar o HADOOP para responder algumas perguntas. O código MapReduce foi implementado
+utilizando Python.
+
+#Perguntas
+
+##1)  Quais as linhas que são mais utilizadas ?
+Para responder essa pergunta precisamos fazer uma simples contagem em cima das linhas de ônibus.
+
+__mapper.py__: O map apenas retorna uma tupla com a linha e o inteiro 1.
+```{r, eval=FALSE}
+    import sys
+    
+    for line in sys.stdin:
+      if len(line) > 1:
+    		cod_linha = line.strip().split(',')[1].split(":")[1]
+    		print "%s\t%s" % (cod_linha,1)
+```
+
+__reducer.py__: O meu reducer conta quantas vezes aquela linha foi encontrada e retornar uma tupla com a linha e quantidade de vezes.
+```{r, eval=FALSE}
+    import sys
+
+    value_temp = 0
+    cod_linha_temp = ''
+    cod_linha_atual = ''
+    
+    for line in sys.stdin:
+      cod_linha = line.split('\t')[0]
+    	value = line.split('\t')[1]
+    
+    	if cod_linha_temp == '':
+    		cod_linha_temp = cod_linha
+    		cod_linha_atual = cod_linha
+    		value_temp = value_temp + int(value) 
+    	elif cod_linha_temp == cod_linha:
+    		value_temp = value_temp + int(value)
+    	else:
+    		print "%s\t%s" % (cod_linha_temp,value_temp)
+    		cod_linha_temp	= cod_linha
+    		value_temp = 0
+    		cod_linha_atual = cod_linha
+    
+    if cod_linha_atual == cod_linha_temp:
+    	print "%s\t%s" % (cod_linha_temp,value_temp)
+```
+
+Agora vamos rodar executar o Map e o Reduce com o comando abaixo
+
+bin/hadoop jar contrib/streaming/hadoop-streaming-1.2.1.jar -file /home/arthur/Documents/DataAnalysis_Problems/DataCourse2/Problem2/mapper.py  -mapper /home/arthur/Documents/DataAnalysis_Problems/DataCourse2/Problem2/mapper.py -file /home/arthur/Documents/DataAnalysis_Problems/DataCourse2/Problem2/reducer.py   -reducer /home/arthur/Documents/DataAnalysis_Problems/DataCourse2/Problem2/reducer.py -input input/doc1-2015102121.txt -output output
+
+Porque eu estou utilizando python, eu precisei usar o jar 'hadoop-streaming-1.2.1.jar' para executar. Ao fim da execução o Hadoop gerou o arquivo 'output/part-00000' contendo a resposta. Uma parte do arquivo pode ser vista logo abaixo:
+
+```{r, echo=FALSE}
+    pergunta1 <- read.delim("~/Documents/DataAnalysis_Problems/DataCourse2/Problem2/pergunta1.txt", header=FALSE)
+    colnames(pergunta1) <- c('Linha','Quantidade')
+    head(pergunta1[order(-pergunta1[,2]),])
+```
+
+Observando a tabela vemos as linhas mais frequentes.
+
+
+##2)  Quais linhas apresentam mais veiculos ?
+
+##3)  Qual o número do cartão mais utilizado ? Quantas vezes ?
+
+
+
