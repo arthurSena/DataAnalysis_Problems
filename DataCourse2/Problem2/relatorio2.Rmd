@@ -24,7 +24,7 @@ Nesse checkpoint, a pergunta que eu tentei responder foi a seguinte:
 
 __Quais são os  pares (ou conjuntos de pessoas) que andam juntos ?__
 
-Minha abordagem para responder esta pergunta foi a seguinte: Meu mapper retorna uma tupla, onde a chave é a concatenação do código do veículo com a data, horae minuto. E o valor é o número do cartão. Desse modo, eu posso dizer que o passageiro com o cartão de número "XXXXXXX" pegou o veículo de código "XXXXX" na hora "XXXXXX". Lembrando que eu estou considerando até a precisão de minutos.
+Minha abordagem para responder esta pergunta foi a seguinte: Meu mapper retorna uma tupla, onde a chave é a concatenação do código do veículo com a data, hora e minuto. E o valor é o número do cartão. Desse modo, eu posso dizer que o passageiro com o cartão de número "XXXXXXX" pegou o veículo de código "XXXXX" na hora "XXXXXX". Lembrando que eu estou considerando até a precisão de minutos.
 
 __mapper.py__
 ```{r, eval=FALSE}
@@ -85,4 +85,4 @@ Visualizando o grafico acima, notamos que o maior grupo de pessoas é composta p
 
 __0002734041-0001572799-0003319103-0000894888-0003311365-0001784534-0003311365-0001505952-0000773932-0003527409-0003404178-0003465759-0002165031-0001906682-0003335273-0003244082-0002872917-0003468224-0002872917-0002373928-0002373928__
 
-Onde eles pegam o ônibus com código __03009__ na data e hora __20\\/10\\/15 17:54__. O que totaliza um grupo de __21__ pessoas ou cartões.
+Onde eles pegam o ônibus com código __03009__ na data e hora __20\\/10\\/15 17:54__. O que totaliza um grupo de __21__ pessoas ou cartões. O resultado completo pode ser visualizado nesse [link](https://drive.google.com/file/d/0B8HrBlt2gwqfWDJCS0puZFN6SkE/view?usp=sharing)

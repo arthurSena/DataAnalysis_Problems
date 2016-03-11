@@ -91,7 +91,7 @@ img {
 <h1>Perguntas</h1>
 <p>Nesse checkpoint, a pergunta que eu tentei responder foi a seguinte:</p>
 <p><strong>Quais são os pares (ou conjuntos de pessoas) que andam juntos ?</strong></p>
-<p>Minha abordagem para responder esta pergunta foi a seguinte: Meu mapper retorna uma tupla, onde a chave é a concatenação do código do veículo com a data, horae minuto. E o valor é o número do cartão. Desse modo, eu posso dizer que o passageiro com o cartão de número “XXXXXXX” pegou o veículo de código “XXXXX” na hora “XXXXXX”. Lembrando que eu estou considerando até a precisão de minutos.</p>
+<p>Minha abordagem para responder esta pergunta foi a seguinte: Meu mapper retorna uma tupla, onde a chave é a concatenação do código do veículo com a data, hora e minuto. E o valor é o número do cartão. Desse modo, eu posso dizer que o passageiro com o cartão de número “XXXXXXX” pegou o veículo de código “XXXXX” na hora “XXXXXX”. Lembrando que eu estou considerando até a precisão de minutos.</p>
 <p><strong>mapper.py</strong></p>
 <pre class="r"><code>#!/usr/bin/env python
 
@@ -158,7 +158,7 @@ rownames(temp) &lt;- NULL
 ## 6          18</code></pre>
 <p>Visualizando o grafico acima, notamos que o maior grupo de pessoas é composta pelos cartões:</p>
 <p><strong>0002734041-0001572799-0003319103-0000894888-0003311365-0001784534-0003311365-0001505952-0000773932-0003527409-0003404178-0003465759-0002165031-0001906682-0003335273-0003244082-0002872917-0003468224-0002872917-0002373928-0002373928</strong></p>
-<p>Onde eles pegam o ônibus com código <strong>03009</strong> na data e hora <strong>20\/10\/15 17:54</strong>. O que totaliza um grupo de <strong>21</strong> pessoas ou cartões.</p>
+<p>Onde eles pegam o ônibus com código <strong>03009</strong> na data e hora <strong>20\/10\/15 17:54</strong>. O que totaliza um grupo de <strong>21</strong> pessoas ou cartões. O resultado completo pode ser visualizado nesse <a href="https://drive.google.com/file/d/0B8HrBlt2gwqfWDJCS0puZFN6SkE/view?usp=sharing">link</a></p>
 </div>
 
 
