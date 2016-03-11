@@ -1,0 +1,88 @@
+---
+title: "Problema 2 - checkpoint 2"
+author: "Arthur Sena"
+date: "03/10/2016"
+output: html_document
+---
+#Descrição dos dados
+Os dados são referentes aos usuários de ônibus de Curitiba, onde cada linha do arquivo segue o seguinte padrão: 
+
+```{r echo=FALSE, warning=FALSE}
+   library(plyr)
+  library(rjson)
+   json_file <- '[{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00181","NUMEROCARTAO":"0002624774","DATAUTILIZACAO":"20/10/15 17:35:27,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00994","NUMEROCARTAO":"0002575080","DATAUTILIZACAO":"20/10/15 18:25:34,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00232","NUMEROCARTAO":"0002849283","DATAUTILIZACAO":"20/10/15 09:49:50,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00232","NUMEROCARTAO":"0001502669","DATAUTILIZACAO":"20/10/15 13:07:02,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00998","NUMEROCARTAO":"0003535943","DATAUTILIZACAO":"20/10/15 09:55:50,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00998","NUMEROCARTAO":"0003496859","DATAUTILIZACAO":"20/10/15 12:37:20,000000"}]'
+   json_data <- fromJSON(json_file)
+   data <- do.call("rbind", json_data)
+   head(data)
+```
+
+Analisando os dados acima, vamos utilizar o HADOOP para responder algumas perguntas. __O código MapReduce foi implementado
+utilizando Python e já usando o HDFS.__
+
+#Perguntas
+Nesse checkpoint, a pergunta que eu tentei responder foi a seguinte:
+
+__Quais são os  pares (ou conjuntos de pessoas) que andam juntos ?__
+
+Minha abordagem para responder esta pergunta foi a seguinte: Meu mapper retorna uma tupla, onde a chave é a concatenação do código do veículo com a data, horae minuto. E o valor é o número do cartão. Desse modo, eu posso dizer que o passageiro com o cartão de número "XXXXXXX" pegou o veículo de código "XXXXX" na hora "XXXXXX". Lembrando que eu estou considerando até a precisão de minutos.
+
+__mapper.py__
+```{r, eval=FALSE}
+#!/usr/bin/env python
+
+import sys
+
+for line in sys.stdin:
+	if len(line) > 1:
+		tempo = line.strip().split(',')[4].split(":")[1].replace("\"","") + ":" +line.strip().split(',')[4].split(":")[2].replace("\"","")
+		cod_veic = line.strip().split(',')[2].split(":")[1]
+		numero_cartao = line.strip().split(',')[3].split(":")[1]
+		print tempo + "-" + cod_veic + "\t" + numero_cartao
+```
+
+Feito isso, o meu reducer irá contar quantas e quais pessoas entraram no determinado veículo naquela determinada hora, onde ele me retorna uma tripla em que o primeiro elemento é o tempo concatenado com o veículo, o segundo elemento é uma lista com os cartões que entraram no veículo naquela hora e o terceiro elemento é a quantidade de cartões, ou seja, a quantidade de pessoas. Desse modo, eu consigo identificar quais são os grupos de pessoas que andam juntas, ou seja, que entram no mesmo ônibus na mesma hora.
+
+```{r, eval=FALSE}
+import sys
+
+tempo_temp = ""
+tempo_autal = ""
+cartoes = []
+
+
+for line in sys.stdin:
+  tempo = line.strip().split('\t')[0]
+	cartao = line.strip().split('\t')[1]
+
+	if tempo_temp == "":
+		tempo_temp = tempo
+		tempo_autal = tempo
+		cartoes.append(cartao)
+	elif tempo_temp == tempo:
+		cartoes.append(cartao)
+	else:
+		print "%s\t%s\t%s" % (tempo , "-".join(cartoes) , len(cartoes))
+ 		tempo_temp = tempo
+		tempo_autal = tempo
+		cartoes = []
+		cartoes.append(cartao)
+if tempo_autal == tempo_temp:
+	print "%s\t%s\t%s" % (tempo , "-".join(cartoes) , len(cartoes))
+
+```
+
+Após a execução dos map e do reduce, o arquivo "output/part-00000" foi gerado. Abaixo, eu fiz um 'head' no arquivo, onde este eu ordenei pela quantidade de pessoas em cada grupo. Desse modo, podemos visualizar quais são os maiores de grupos de pessoas que pegam o mesmo ônibus.
+
+```{r, warning=FALSE}
+problem2.checkpoint2 <- read.delim("~/Documents/DataAnalysis_Problems/DataCourse2/Problem2/problem2-checkpoint2.txt", header=FALSE)
+ colnames(problem2.checkpoint2) <- c("TEMPO_E_COD_VEIC" , "CARTOES" , "QTD_PESSOAS")
+ temp <- head(problem2.checkpoint2[order(-problem2.checkpoint2[,3]),])
+rownames(temp) <- NULL
+ temp
+```
+
+Visualizando o grafico acima, notamos que o maior grupo de pessoas é composta pelos cartões: 
+
+__0002734041-0001572799-0003319103-0000894888-0003311365-0001784534-0003311365-0001505952-0000773932-0003527409-0003404178-0003465759-0002165031-0001906682-0003335273-0003244082-0002872917-0003468224-0002872917-0002373928-0002373928__
+
+Onde eles pegam o ônibus com código __03009__ na data e hora __20\\/10\\/15 17:54__. O que totaliza um grupo de __21__ pessoas ou cartões.
