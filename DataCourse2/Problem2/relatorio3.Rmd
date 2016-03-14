@@ -1,0 +1,49 @@
+---
+title: "Problema2 - Checkpoint3"
+author: "Arthur Sena"
+date: "03/14/2016"
+output: html_document
+---
+
+#Descrição dos dados
+Os dados são referentes aos usuários de ônibus de Curitiba, onde cada linha do arquivo segue o seguinte padrão: 
+
+```{r echo=FALSE, warning=FALSE}
+   library(plyr)
+  library(rjson)
+   json_file <- '[{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00181","NUMEROCARTAO":"0002624774","DATAUTILIZACAO":"20/10/15 17:35:27,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00994","NUMEROCARTAO":"0002575080","DATAUTILIZACAO":"20/10/15 18:25:34,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00232","NUMEROCARTAO":"0002849283","DATAUTILIZACAO":"20/10/15 09:49:50,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00232","NUMEROCARTAO":"0001502669","DATAUTILIZACAO":"20/10/15 13:07:02,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00998","NUMEROCARTAO":"0003535943","DATAUTILIZACAO":"20/10/15 09:55:50,000000"},{"CODLINHA":"ARA","NOMELINHA":"SISTEMA ARAUCARIA","CODVEICULO":"00998","NUMEROCARTAO":"0003496859","DATAUTILIZACAO":"20/10/15 12:37:20,000000"}]'
+   json_data <- fromJSON(json_file)
+   data <- do.call("rbind", json_data)
+   head(data)
+```
+
+#Usando SPARK
+Nesse relatório, vamos responder duas perguntas com Spark. A primeira, que já foi respondida no checkpoint passado usando Hadoop, se encontra logo abaixo:
+
+__Quais são os  pares (ou conjuntos de pessoas) que andam juntos ?__
+Novamente, eu pretendo utilizar a mesma idéia, onde meu mapper retorna uma tupla, onde a chave é a concatenação do código do veículo com a data, hora e minuto. E o valor é o número do cartão. Desse modo, eu posso dizer que o passageiro com o cartão de número "XXXXXXX" pegou o veículo de código "XXXXX" na hora "XXXXXX". Lembrando que eu estou considerando até a precisão de minutos.
+
+```{r, eval=FALSE}
+      lines = sc.textFile("~/doc1-2015102121.txt") #Carrego o arquigo
+    
+      myMapper = lines.filter(lambda x : len(x) > 1)
+                        .map(lambda x : x.strip().split(",")[4].split(":")[1] + ":" + x.strip().split(",")[4].split(":")[2]+""                              
+                             +x.strip().split(',')[2].split(':')[1]+" " + x.strip().split(',')[3].split(":")[1])
+    
+    
+      myReducer = myMapper.reduceByKey(lambda a, b: a+":"+b)
+    
+      resultado  = myReducer.map(lambda x: (x[0],x[1],len(x[1].split(":"))))
+```
+
+Por fim, eu escrevi o resultado em um arquivo, ordenei pelo quantidade de pessoas no grupo e abaixo é possível ver 'head' do resultado.
+
+```{r, warning=FALSE}
+      resultado_com_spark <- read.delim("~/Documents/DataAnalysis_Problems/DataCourse2/Problem2/resultado_com_spark.txt", header=FALSE, stringsAsFactors=FALSE,quote = "")
+      colnames(resultado_com_spark) <- c("TEMPO_E_COD_VEIC" , "CARTOES" , "QTD_PESSOAS")
+      temp <- head(resultado_com_spark[order(-resultado_com_spark[,3]),])
+      rownames(temp) <- NULL
+      temp
+```
+
+Podemos notar que o resultado é igual ao resultado obtido com o Hadoop e que o código usado é, consideravelmente, menor.
