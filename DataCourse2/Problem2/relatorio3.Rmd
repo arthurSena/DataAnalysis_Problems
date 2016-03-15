@@ -47,3 +47,27 @@ Por fim, eu escrevi o resultado em um arquivo, ordenei pelo quantidade de pessoa
 ```
 
 Podemos notar que o resultado é igual ao resultado obtido com o Hadoop e que o código usado é, consideravelmente, menor.
+
+
+__Quais linhas apresentam mais veiculos ?__
+Para resolver tal questão, eu vou fazer uma função map junto com a função "distinct" afim de retornar as tuplas não repetidas tendo como chave a linha e o código do veículo. Desse modo, eu posso aplicar um 'reducer' e contar quantos veículos cada linha contém.
+
+```{r, eval=FALSE}
+    myMapper = data.filter(lambda x : len(x) > 1).map(lambda x : (x.strip().split(",")[1].split(":")[1] , x.strip().split(",")[2].split(":")[1])).distinct()
+  
+  myReducer = myMapper.reduceByKey(lambda a, b: a+":"+b)
+
+  resultado = myReducer.map(lambda x : (x[0],x[1],len(x[1].split(":"))))
+ 
+```
+ 
+O 'Head' do resultado contendo as linhas com mais veiculos pode ser visualizado logo abaixo:
+ 
+```{r, warning=FALSE}
+    resultado_com_spark2 <- read.delim("~/Documents/DataAnalysis_Problems/DataCourse2/Problem2/resultado_com_spark2.txt", header=FALSE, quote = "")
+    colnames(resultado_com_spark2) <- c("LINHA" , "VEICULOS" , "QTD_VEIC")
+      temp <- head(resultado_com_spark2[order(-resultado_com_spark2[,3]),])
+      rownames(temp) <- NULL
+      temp[,-2]
+```
+
