@@ -89,7 +89,7 @@ img {
 <div id="usando-spark" class="section level1">
 <h1>Usando SPARK</h1>
 <p>Nesse relatório, vamos responder duas perguntas com Spark. A primeira, que já foi respondida no checkpoint passado usando Hadoop, se encontra logo abaixo:</p>
-<p><strong>Quais são os pares (ou conjuntos de pessoas) que andam juntos ?</strong> Novamente, eu pretendo utilizar a mesma idéia, onde meu mapper retorna uma tupla, onde a chave é a concatenação do código do veículo com a data, hora e minuto. E o valor é o número do cartão. Desse modo, eu posso dizer que o passageiro com o cartão de número “XXXXXXX” pegou o veículo de código “XXXXX” na hora “XXXXXX”. Lembrando que eu estou considerando até a precisão de minutos.</p>
+<p><strong>a) Quais são os pares (ou conjuntos de pessoas) que andam juntos ?</strong> Novamente, eu pretendo utilizar a mesma idéia, onde meu mapper retorna uma tupla, onde a chave é a concatenação do código do veículo com a data, hora e minuto. E o valor é o número do cartão. Desse modo, eu posso dizer que o passageiro com o cartão de número “XXXXXXX” pegou o veículo de código “XXXXX” na hora “XXXXXX”. Lembrando que eu estou considerando até a precisão de minutos.</p>
 <pre class="r"><code>      lines = sc.textFile(&quot;~/doc1-2015102121.txt&quot;) #Carrego o arquigo
     
       myMapper = lines.filter(lambda x : len(x) &gt; 1)
@@ -128,7 +128,7 @@ img {
 ## 5          19
 ## 6          18</code></pre>
 <p>Podemos notar que o resultado é igual ao resultado obtido com o Hadoop e que o código usado é, consideravelmente, menor.</p>
-<p><strong>Quais linhas apresentam mais veiculos ?</strong> Para resolver tal questão, eu vou fazer uma função map junto com a função “distinct” afim de retornar as tuplas não repetidas tendo como chave a linha e o código do veículo. Desse modo, eu posso aplicar um ‘reducer’ e contar quantos veículos cada linha contém.</p>
+<p><strong>b) Quais linhas apresentam mais veiculos ?</strong> Para resolver tal questão, eu vou fazer uma função map junto com a função “distinct” afim de retornar as tuplas não repetidas tendo como chave a linha e o código do veículo. Desse modo, eu posso aplicar um ‘reducer’ e contar quantos veículos cada linha contém.</p>
 <pre class="r"><code>    myMapper = data.filter(lambda x : len(x) &gt; 1).map(lambda x : (x.strip().split(&quot;,&quot;)[1].split(&quot;:&quot;)[1] , x.strip().split(&quot;,&quot;)[2].split(&quot;:&quot;)[1])).distinct()
   
   myReducer = myMapper.reduceByKey(lambda a, b: a+&quot;:&quot;+b)
@@ -147,6 +147,27 @@ img {
 ## 4   &quot;INTERBAIRROS IV&quot;       27
 ## 5  &quot;INTERBAIRROS III&quot;       23
 ## 6  &quot;INTERB II ANTI H&quot;       23</code></pre>
+<p><strong>c) Qual das duas tecnologias (i.e. Hadoop e Spark) apresentou melhor tempo de execução no quesito (a) acima.</strong></p>
+<p>Para responder tal pergunta eu rodei novamente o código para responder a pergunta 5 vezes tanto para o Hadoop quanto para o Spark. No hadoop o tempo de execução de cada job pode ser visualizado logo abaixo:</p>
+<ul>
+<li><p>Launched At: 16-Mar-2016 01:17:42 (0sec) Finished At: 16-Mar-2016 01:18:01 (19sec)</p></li>
+<li><p>Launched At: 15-Mar-2016 21:05:57 (0sec) Finished At: 15-Mar-2016 21:06:17 (20sec)</p></li>
+<li><p>Launched At: 16-Mar-2016 02:19:00 (0sec) Finished At: 16-Mar-2016 02:19:20 (19sec)</p></li>
+<li><p>Launched At: 16-Mar-2016 02:21:28 (0sec) Finished At: 16-Mar-2016 02:21:48 (19sec)</p></li>
+<li><p>Launched At: 16-Mar-2016 02:22:46 (0sec) Finished At: 16-Mar-2016 02:23:06 (19sec)</p></li>
+</ul>
+<p><strong>Média: 19.2</strong></p>
+<p>Os valores acima podem ser observado no arquivo “<a href="http://localhost:50030/jobhistoryhome.jsp" class="uri">http://localhost:50030/jobhistoryhome.jsp</a>” que contém um histórico com informações à respeito dos jobs rodados recentemente.</p>
+<p>Quanto ao spark, eu usei a função time.time() para capturar o tempo de execução. Os valores foram os listados abaixo</p>
+<ul>
+<li>3.76170611382 segundos</li>
+<li>2.92090201378 segundos</li>
+<li>3.84272098541 segundos</li>
+<li>2.23719096184 segundos</li>
+<li>2.99762892723 segundos</li>
+</ul>
+<p><strong>Média: 3.15203 seg</strong></p>
+<p>Claramente vemos que o Spark apresentou um desempenho melhor em relação ao tempo de execução.</p>
 </div>
 
 
