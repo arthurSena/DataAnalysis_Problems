@@ -1,0 +1,114 @@
+---
+title: "PSA Cancer - Previsão"
+author: "Arthur Sena"
+date: "03/26/2016"
+output: html_document
+---
+
+#Descrição dos Dados
+
+Os dados utilizados neste problema são referentes a exames em pacientes homens afim de identificar sintomas de câncer de prostata. O dataset é composto por dez variáveis, onde uma delas (psa) será considerada nossa variável resposta. Nosso objetivo final será predizer a variável psa a partir dos preditores disponíveis utilizando o algoritmo de __regressão linear__. Abaixo é possível ver uma amostra dos nossos dados.
+
+
+```{r, warning=FALSE, message=FALSE}
+    library(dplyr)
+    library(caret)
+    require(reshape2)
+    require(ggplot2)
+    data <- read.delim("~/Documents/DataAnalysis_Problems/DataCourse2/Problem3/data.txt")
+    data <- data %>% select(-X)
+    print(head(data))
+```
+
+As nossa variáveis preditoras estão descritas logo abaixo:
+
+* __vol__: volume do câncer
+* __idade__: idade do paciente
+* __hpb__: hiperplasia prostática benigna
+* __ivs__: invasão das vesículas seminais
+* __pc__: penetração capsular
+* __gleason__: escore Gleason
+* __pgg45__: percentagem escore Gleason 4 ou 5
+* __psa__: antígeno específico da próstata (esta é a variável resposta).
+
+Antes de construir qualquer modelo, vamos primeiro examinar a distribuição das nossas variáveis e a correlação das mesmas com a nossa variavel resposta.
+
+###Sumario
+```{r, warning=FALSE,message=FALSE}
+    summary(data)
+```
+
+###Distribuição
+```{r, warning=FALSE,message=FALSE}
+   df <- melt(data)
+   ggplot(df,aes(x = value)) + 
+    facet_wrap(~variable, scales = "free_x") + 
+    geom_histogram()
+```
+
+###Correlação
+```{r, warning=FALSE, message=FALSE}
+   pairs(~.,data=select(data, -train, -svi),main="Scatterplot Matrix")
+   temp <- cor(select(data,-train))
+   print(temp)
+```
+
+Analisando a matrix e gráfico de correlação acima podemos escolher variáveis que apresentam uma correlação mais forte com o PSA, porém temos que ficar atentos a preditores que tem correlação forte entre si, já que eles podem atrapalhar o modelo.
+
+```{r, warning=FALSE, message=FALSE}
+   temp <- as.data.frame(temp)
+   temp <- select(temp, lpsa)
+   print(temp)
+```
+
+Analisando os dados acima, vamos remover as variáveis 'Age' e 'Lbph' pois tem correlação baixa com o PSA. Em compensação vemos que a variável 'lcavol' é a que apresenta a maior correlação (0.7344603). O gráfico abaixo evidencia mais tal correlação mostrando que os dados apresentam uma forma linear.
+
+```{r, message=TRUE, warning=FALSE} 
+   plot(data$lpsa, data$lcavol)
+   abline(-1,1,col="blue",lty=2,lwd=2)
+```
+
+As variáveis 'lcp' e 'gleason' também vão ser retiradas do modelo, pois apresentam correlação alta com as variáveis 'lcavol' e 'lweight' respectivamente. Além disso, elas apresentam uma menor correlação com o PSA em comparação com 'lweight' e 'lcavol'.
+
+#Construindo Modelo
+
+```{r, message=FALSE, warning=FALSE}
+   data <- select(data, -age , -lbph, -lcp, -gleason)
+    train <- filter(data, train == TRUE)
+    test <- filter(data, train == FALSE)
+    reg_linear <- lm(lpsa~., data = select(train , -train))
+    summary(reg_linear)
+```
+
+Percebos que as variáveis 'pgg45' e 'svi' apresetaram um p-valor alto, ou seja, elas não são boas preditoras nesse modelo. Vamos agora realizar nossa predição.
+
+#Predição
+```{r, warning=FALSE, message=FALSE}
+   predicoes = predict.lm(reg_linear,select(test , -train, -lpsa))
+   residuos = test$lpsa - predicoes 
+```
+
+#RMSE e R2
+```{r,warning=FALSE, message=FALSE}
+   RMSE(predicoes, test$lpsa)
+   R2(predicoes, test$lpsa) 
+```
+
+RMSE indica o quão acurado nosso modelo se comportou e o R2 sinaliza o quão bem nossa variável resposta pode ser explica pelo nosso modelo. Vemos que apresentamos um RMSE e R2, relativamente, altos. Porém, é importante visualizar nossas predições a fim de ter uma melhor noção do desempenho do modelo.
+
+#Gráficos de Diagnóstico
+```{r, warning=FALSE, message=FALSE}
+   axisRange = extendrange(c(test$lpsa,predicoes)) #deixando as variáveis na mesma escala
+    plot(test$lpsa,predicoes)
+    abline(0,1,col="blue",lty=2,lwd=2)
+```
+
+Podemos notar alguns outlier's na nossa variável resposta. Muito provavelmente, eles influenciaram no calculo do R2 e RMSE. Sem eles, poderíamos ter obtidos melhores valores para tais métricas. 
+
+```{r,warning=FALSE, message=FALSE}
+   plot(predicoes,residuos)
+   abline(h=0,col="blue",lty=2,lwd=2)
+```
+
+No gráfico de resíduos é importante que não seja possível visualizar nenhum padrão o que podemos constatar observando a visualização acima.
+
