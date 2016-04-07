@@ -1,0 +1,553 @@
+---
+title: "Checkpoint1"
+author: "Arthur Sena"
+date: "04/06/2016"
+output: html_document
+---
+
+#Descriçao dos dados
+Os dados são referentes aos usuários de ônibus de Curitiba, onde cada linha do arquivo segue o seguinte padrão: 
+
+```{r echo=FALSE, warning=FALSE}
+   library(dplyr)
+   dados <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem4/dados.csv", dec=",")
+   head(dados)
+```
+
+As variáveis e seus significados estão listados abaixo:
+
+__VEIC__ - identificador do veículo
+__LAT__ - coordenada latitude
+__LON__ - coordenada longitude
+__DTHR__ - data e hora da localização
+__COD_LINHA__ - Código da linha de ônibus
+
+#Problema
+
+A partir dos dados fornecidos, vamos predizer a duração da viagem de ônibus e linhas a partir da localização dos veículos, considerando como ponto inicial o primeiro registro de localização. Assim sendo, vamos precisar criar mais duas colunas no nosso dataset original, onde elas vão representar a duração da viagem e a, respectiva distância.
+
+A fim de calcular a distância percorrida, a fórmula de distância euclidiana será usada. Dessa forma, vamos usar a LAT e LON pra calcular a distância entre os pontos, e dessa forma achar a distância feita pelo ônibus/linha. Nesse caso, o ponto inicial será o primeiro registro de localização. Uma lógica semelhante será aplicada a fim de calcular o tempo gasto pelo ônibus/linha.
+
+Outro ponto a se considerar é que o mais de um veículos pode estar rodando na mesma linha. Desse modo, precisamos agrupar linha e veiculo a fim de criar os nossos modelo.
+
+#Derivando a coluna distância
+
+```{r,message=FALSE, warning=FALSE}
+   veic_AA005_linha_222 <- filter(dados, VEIC =='AA005',COD_LINHA == 222)
+   veic_AA005_linha_812 <- filter(dados, VEIC =='AA005',COD_LINHA == 812)
+
+   veic_AA006_linha_812 <- filter(dados, VEIC =='AA006',COD_LINHA == 812)
+   veic_AA006_linha_822 <- filter(dados, VEIC =='AA006',COD_LINHA == 822)
+
+   veic_AA007_linha_812 <- filter(dados, VEIC =='AA007',COD_LINHA == 812)
+   veic_AA007_linha_827 <- filter(dados, VEIC =='AA007',COD_LINHA == 827)
+
+    criarDistancia <- function(dataset){
+         dataset$Distancia <- NA
+         
+         for (i in 1:nrow(dataset)){
+             if (i == 1){
+               dataset[i,6] = 0
+            }
+            else{
+                  #Usando a distância euclidiana abaixo
+                    dataset[i,6] = dataset[i-1,6] + sqrt((dataset[i,2] - dataset[i-1,2])^2 + (dataset[i,3] - dataset[i-1,3])^2)
+            }
+         }
+         
+         return(dataset)
+    }
+
+   veic_AA005_linha_222 <- criarDistancia(veic_AA005_linha_222)
+   veic_AA005_linha_812 <- criarDistancia(veic_AA005_linha_812)
+
+   veic_AA006_linha_812 <- criarDistancia(veic_AA006_linha_812)
+   veic_AA006_linha_822  <- criarDistancia(veic_AA006_linha_822)
+
+   veic_AA007_linha_812 <- criarDistancia(veic_AA007_linha_812)
+   veic_AA007_linha_827 <- criarDistancia(veic_AA007_linha_827)
+```
+
+#Derivando a coluna tempo
+
+```{r}
+
+   criarDuracao <- function(dataset){
+     #Criando o timestamp a partir da variável DTHR
+     dataset$timestamp <- as.POSIXct(strptime(x = as.character(dataset$DTHR),
+                                 format = "%d/%m/%Y %H:%M:%S"))
+     dataset$Duracao <- NA
+     temp_veic <- ""
+
+     for (i in 1:nrow(dataset)){
+         if (i == 1){
+           dataset[i,8] = 0
+        }
+        else{
+            #Subtraímos o tempo atual pelo anterior e somamos com o tempo até o ponto inicial
+            dataset[i,8] = dataset[i-1,8] + (dataset[i-1,7]-dataset[i,7])
+        }
+     }
+     return(dataset)
+   }
+   veic_AA005_linha_222 <- criarDuracao(veic_AA005_linha_222)
+   veic_AA005_linha_812 <- criarDuracao(veic_AA005_linha_812)
+
+   veic_AA006_linha_812 <- criarDuracao(veic_AA006_linha_812)
+   veic_AA006_linha_822  <- criarDuracao(veic_AA006_linha_822)
+
+   veic_AA007_linha_812 <- criarDuracao(veic_AA007_linha_812)
+   veic_AA007_linha_827 <- criarDuracao(veic_AA007_linha_827)
+```
+
+
+Vamos agora analisar a distribuição da coluna 'Duração'
+
+```{r, message=FALSE, warning=FALSE}
+    hist(veic_AA005_linha_222$Duracao)
+    hist(veic_AA005_linha_812$Duracao)
+
+    hist(veic_AA006_linha_812$Duracao)
+    hist(veic_AA006_linha_822$Duracao)
+
+    hist(veic_AA007_linha_812$Duracao)
+    hist(veic_AA007_linha_827$Duracao)
+```
+
+Aparentemente, nossos dados apresentam uma distribuição sem nenhum outlier's perceptível.
+
+#Criando os modelos
+
+Vamos usar o 'Caret' para dividir em treino e teste o dataset e criar os modelos. No caso, vamos criar um modelo pra cada veiculo. Cada um desses modelos irá tentar prever a duração da viagem do seu, respectivo, veículo.
+
+```{r, warning=FALSE, message=FALSE}
+    library(caret)
+
+   #Criando as partições de treino e teste    
+    index_AA005_linha_222 <- createDataPartition(veic_AA005_linha_222$Duracao, p = .75, list = FALSE)
+
+    index_AA005_linha_812 <- createDataPartition(veic_AA005_linha_812$Duracao, p = .75, list = FALSE)
+
+    index_AA006_linha_812 <- createDataPartition(veic_AA006_linha_812$Duracao, p = .75, list = FALSE)
+
+    index_AA006_linha_822 <- createDataPartition(veic_AA006_linha_822$Duracao, p = .75, list = FALSE)
+
+    index_AA007_linha_812 <- createDataPartition(veic_AA007_linha_812$Duracao, p = .75, list = FALSE)
+    
+    index_AA007_linha_827 <- createDataPartition(veic_AA007_linha_827$Duracao, p = .75, list = FALSE)
+
+    training_AA005_linha_222 <- veic_AA005_linha_222[ index_AA005_linha_222,]
+    testing_AA005_linha_222  <- veic_AA005_linha_222[-index_AA005_linha_222,]
+
+    training_AA005_linha_812 <- veic_AA005_linha_812[ index_AA005_linha_812,]
+    testing_AA005_linha_812  <- veic_AA005_linha_812[-index_AA005_linha_812,]
+
+    training_AA006_linha_812 <- veic_AA006_linha_812[ index_AA006_linha_812,]
+    testing_AA006_linha_812  <- veic_AA006_linha_812[-index_AA006_linha_812,]
+
+    training_AA006_linha_822 <- veic_AA006_linha_822[ index_AA006_linha_822,]
+    testing_AA006_linha_822  <- veic_AA006_linha_822[-index_AA006_linha_822,]
+
+    training_AA007_linha_812 <- veic_AA007_linha_812[ index_AA007_linha_812,]
+    testing_AA007_linha_812  <- veic_AA007_linha_812[-index_AA007_linha_812,]
+
+    training_AA007_linha_827 <- veic_AA007_linha_827[ index_AA007_linha_827,]
+    testing_AA007_linha_827  <- veic_AA007_linha_827[-index_AA007_linha_827,]
+
+   #Usando cross-validation para evitar o overfitting
+    fitControl <- trainControl(
+                           method = "repeatedcv",
+                           number = 10,
+                           repeats = 10)
+
+   #Treinando os modelos usando regressão linear
+    mode_AA005_linha_222 <- train(Duracao ~ Distancia, data = training_AA005_linha_222,
+                 method = "lm",
+                 metric = "RMSE",
+                 trControl = fitControl)
+
+    mode_AA005_linha_812 <- train(Duracao ~ Distancia, data = training_AA005_linha_812,
+                 method = "lm",
+                 metric = "RMSE",
+                 trControl = fitControl)
+
+    mode_AA006_linha_812 <- train(Duracao ~ Distancia, data = select(training_AA006_linha_812,Duracao, Distancia),
+                 method = "lm",
+                 metric = "RMSE",
+                 trControl = fitControl)
+
+  mode_AA006_linha_822 <- train(Duracao ~ Distancia, data = training_AA006_linha_822,
+                 method = "lm",
+                 metric = "RMSE",
+                 trControl = fitControl)
+
+    mode_AA007_linha_812 <- train(Duracao ~ Distancia, data = training_AA007_linha_812,
+                 method = "lm",
+                 metric = "RMSE",
+                 trControl = fitControl)
+
+    mode_AA007_linha_827<- train(Duracao ~ Distancia, data = training_AA007_linha_827,
+                 method = "lm",
+                 metric = "RMSE",
+                 trControl = fitControl)
+
+    print(mode_AA005_linha_222)
+    print(mode_AA005_linha_812)
+
+    print(mode_AA006_linha_812)
+    print(mode_AA006_linha_822)
+
+    print(mode_AA007_linha_812)
+    print(mode_AA007_linha_827)
+
+```
+
+Conseguimos um bom R2 no treino. Agora, vamos ver como os modelos se comportam no teste.
+
+#Testando os modelos 
+
+Vamos agora testar nossosm modelos e calcular o R2 e RMSE pra cada um.
+
+```{r, warning=FALSE, message=FALSE}
+    predicoes_AA005_linha_222 <- predict(mode_AA005_linha_222, select(testing_AA005_linha_222, Distancia))
+    predicoes_AA005_linha_812 <- predict(mode_AA005_linha_812, select(testing_AA005_linha_812, Distancia))
+
+    predicoes_AA006_linha_812 <- predict(mode_AA006_linha_812, select(testing_AA006_linha_812, Distancia))
+    predicoes_AA006_linha_822 <- predict(mode_AA006_linha_822, select(testing_AA006_linha_822, Distancia))
+
+    predicoes_AA007_linha_812 <- predict(mode_AA007_linha_812, select(testing_AA007_linha_812, Distancia))
+    predicoes_AA007_linha_827 <- predict(mode_AA007_linha_827, select(testing_AA007_linha_827, Distancia))
+
+    residuos_AA005_linha_222 <- testing_AA005_linha_222$Duracao - predicoes_AA005_linha_222
+    residuos_AA005_linha_812 <- testing_AA005_linha_812$Duracao - predicoes_AA005_linha_812
+
+    residuos_AA006_linha_812 <- testing_AA006_linha_812$Duracao - predicoes_AA006_linha_812
+    residuos_AA006_linha_822 <- testing_AA006_linha_822$Duracao - predicoes_AA006_linha_822
+
+    residuos_AA007_linha_812 <- testing_AA007_linha_812$Duracao - predicoes_AA007_linha_812
+    residuos_AA007_linha_827 <- testing_AA007_linha_827$Duracao - predicoes_AA007_linha_827
+
+   r2_AA005_linha_222 <- R2(predicoes_AA005_linha_222, testing_AA005_linha_222$Duracao)
+   r2_AA005_linha_812 <- R2(predicoes_AA005_linha_812, testing_AA005_linha_812$Duracao)
+
+   r2_AA006_linha_812 <- R2(predicoes_AA006_linha_812, testing_AA006_linha_812$Duracao)
+   r2_AA006_linha_822 <- R2(predicoes_AA006_linha_822, testing_AA006_linha_822$Duracao)
+
+   r2_AA007_linha_812 <- R2(predicoes_AA007_linha_812, testing_AA007_linha_812$Duracao)
+   r2_AA007_linha_827 <- R2(predicoes_AA007_linha_827, testing_AA007_linha_827$Duracao)
+
+   rmse_AA005_linha_222 <- RMSE(predicoes_AA005_linha_222, testing_AA005_linha_222$Duracao)
+   rmse_AA005_linha_812 <- RMSE(predicoes_AA005_linha_812, testing_AA005_linha_812$Duracao)
+
+   rmse_AA006_linha_812 <- RMSE(predicoes_AA006_linha_812, testing_AA006_linha_812$Duracao)
+   rmse_AA006_linha_822 <- RMSE(predicoes_AA006_linha_822, testing_AA006_linha_822$Duracao)
+
+   rmse_AA007_linha_812 <- RMSE(predicoes_AA007_linha_812, testing_AA007_linha_812$Duracao)
+   rmse_AA007_linha_827 <- RMSE(predicoes_AA007_linha_827, testing_AA007_linha_827$Duracao)
+
+   r2_AA005_linha_222
+   r2_AA005_linha_812
+   r2_AA006_linha_812
+   r2_AA006_linha_822
+   r2_AA007_linha_812
+   r2_AA007_linha_827
+
+```
+
+Vemos que apresentamos um R2 bem alto, o que indica que os nossos modelos conseguem explicar uma alta porcentagem da variação da nossa variável alvo. Isso, também, indica que todos os veículose linhas são bastante previsiveís. Podemos agora mostrar os gráficos entre as nossas predições e o valor real.
+
+```{r, message=FALSE, warning=FALSE}
+          plot(predicoes_AA005_linha_222, testing_AA005_linha_222$Duracao)
+          plot(predicoes_AA005_linha_812, testing_AA005_linha_812$Duracao)
+
+          plot(predicoes_AA006_linha_812, testing_AA006_linha_812$Duracao)
+          plot(predicoes_AA006_linha_822, testing_AA006_linha_822$Duracao)
+
+          plot(predicoes_AA007_linha_812, testing_AA007_linha_812$Duracao)
+          plot(predicoes_AA007_linha_827, testing_AA007_linha_827$Duracao)
+```
+
+Observando os gráficos acima, vemos claramente que existe uma relação linear forte entre nossas predições e os valores reais.
+
+#######################################################################
+
+
+
+#Criando os modelos
+
+Vamos usar o 'Caret' para dividir em treino e teste o dataset e criar os modelos. No caso, vamos criar um modelo pra cada veiculo. Cada um desses modelos irá tentar prever a duração da viagem do seu, respectivo, veículo.
+
+```{r, warning=FALSE, message=FALSE}
+    library(caret)
+
+    #Filtrando os dados para cada um dos veiculos
+     veic_AA005 <- filter(dados, VEIC == "AA005")
+     veic_AA006 <- filter(dados, VEIC == "AA006")
+     veic_AA007 <- filter(dados, VEIC == "AA007")
+
+   #Criando as partições de treino e teste    
+    index_AA005 <- createDataPartition(veic_AA005$Duracao, p = .75, list = FALSE)
+    index_AA006 <- createDataPartition(veic_AA006$Duracao, p = .75, list = FALSE)
+    index_AA007 <- createDataPartition(veic_AA007$Duracao, p = .75, list = FALSE)
+
+    training_AA005 <- veic_AA005[ index_AA005,]
+    testing_AA005  <- veic_AA005[-index_AA005,]
+
+    training_AA006 <- veic_AA006[ index_AA006,]
+    testing_AA006  <- veic_AA006[-index_AA006,]
+
+    training_AA007 <- veic_AA007[ index_AA007,]
+    testing_AA007  <- veic_AA007[-index_AA007,]
+
+   #Usando cross-validation para evitar o overfitting
+    fitControl <- trainControl(
+                           method = "repeatedcv",
+                           number = 10,
+                           repeats = 10)
+
+   #Treinando os modelos usando regressão linear
+    mode_AA005 <- train(Duracao ~ Distancia, data = training_AA005,
+                 method = "lm",
+                 metric = "RMSE",
+                 trControl = fitControl)
+
+    mode_AA006 <- train(Duracao ~ Distancia, data = training_AA006,
+                 method = "lm",
+                 metric = "RMSE",
+                 trControl = fitControl)
+
+    mode_AA007 <- train(Duracao ~ Distancia, data = select(training_AA007,Duracao, Distancia),
+                 method = "lm",
+                 metric = "RMSE",
+                 trControl = fitControl)
+    print(mode_AA005)
+    print(mode_AA006)
+    print(mode_AA007)
+```
+
+Conseguimos um bom R2 no treino. Agora, vamos ver como os modelos se comportam no teste.
+
+#Testando os modelos de Veiculos
+
+Vamos agora testar nossosm modelos e calcular o R2 e RMSE pra cada um.
+
+```{r, warning=FALSE, message=FALSE}
+    predicoes_AA005 <- predict(mode_AA005, select(testing_AA005, Distancia))
+    predicoes_AA006 <- predict(mode_AA006, select(testing_AA006, Distancia))
+    predicoes_AA007 <- predict(mode_AA007, select(testing_AA007, Distancia))
+
+    residuos_AA005 <- testing_AA005$Duracao - predicoes_AA005 
+    residuos_AA006 <- testing_AA006$Duracao - predicoes_AA006 
+    residuos_AA007 <- testing_AA007$Duracao - predicoes_AA007 
+
+   r2_AA005 <- R2(predicoes_AA005, testing_AA005$Duracao)
+   r2_AA006 <- R2(predicoes_AA006, testing_AA006$Duracao)
+   r2_AA007 <- R2(predicoes_AA007, testing_AA007$Duracao)
+
+   rmse_AA005 <- RMSE(predicoes_AA005, testing_AA005$Duracao)
+   rmse_AA006 <- RMSE(predicoes_AA006, testing_AA006$Duracao)
+   rmse_AA007 <- RMSE(predicoes_AA007, testing_AA007$Duracao)
+
+  r2_AA005
+  r2_AA006
+  r2_AA007
+
+  rmse_AA005
+  rmse_AA006
+  rmse_AA007
+```
+
+Vemos que apresentamos um R2 bem alto, o que indica que os nossos modelos conseguem explicar uma alta porcentagem da variação da nossa variável alvo. Isso, também, indica que todos os veículos são bastante previsiveís. Podemos agora mostrar os gráficos entre as nossas predições e o valor real.
+
+```{r, message=FALSE, warning=FALSE}
+          plot(predicoes_AA005, testing_AA005$Duracao)
+          plot(predicoes_AA006, testing_AA006$Duracao)
+          plot(predicoes_AA007, testing_AA007$Duracao)
+```
+
+Observando os gráficos acima, vemos claramente que existe uma relação linear forte entre nossas predições e os valores reais.
+
+Feito isso, vamos repetir o processo, mas dessa vez se conentrando apenas nas linhas, e não mais nos veículos.
+
+#Derivando a coluna distância baseado na Linha
+
+```{r}
+    criarDistancia <- function(dataset){
+         dataset$Distancia <- NA
+         
+         for (i in 1:nrow(dataset)){
+             if (i == 1){
+               dataset[i,6] = 0
+            }
+            else{
+                  #Usando a distância euclidiana abaixo
+                    dataset[i,6] = dataset[i-1,6] + sqrt((dataset[i,2] - dataset[i-1,2])^2 + (dataset[i,3] - dataset[i-1,3])^2)
+            }
+         }
+         
+         return(dataset)
+    }
+
+   dados <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem4/dados.csv", dec=",")
+  
+   linha_222 <- filter(dados, COD_LINHA == 222)
+   linha_812 <- filter(dados, COD_LINHA == 812)
+   linha_822 <- filter(dados, COD_LINHA == 822)
+   linha_827 <- filter(dados, COD_LINHA == 827)
+
+   linha_222 <- criarDistancia(linha_222)
+   linha_812 <- criarDistancia(linha_812)
+   linha_822 <- criarDistancia(linha_822)
+   linha_827 <- criarDistancia(linha_827)
+```
+
+
+#Derivando a coluna tempo baseado na Linha
+
+```{r}
+
+   criarDuracao <- function(dataset){
+     #Criando o timestamp a partir da variável DTHR
+     dataset$timestamp <- as.POSIXct(strptime(x = as.character(dataset$DTHR),
+                                 format = "%d/%m/%Y %H:%M:%S"))
+     dataset$Duracao <- NA
+     temp_veic <- ""
+
+     for (i in 1:nrow(dataset)){
+         if (i == 1){
+           dataset[i,8] = 0
+        }
+        else{
+            #Subtraímos o tempo atual pelo anterior e somamos com o tempo até o ponto inicial
+            dataset[i,8] = dataset[i-1,8] + (dataset[i-1,7]-dataset[i,7])
+        }
+     }
+     return(dataset)
+   }
+       linha_222 <- criarDuracao(linha_222)
+       linha_812 <- criarDuracao(linha_812)
+       linha_822 <- criarDuracao(linha_822)
+       linha_827 <- criarDuracao(linha_827)
+```
+
+Vamos agora analisar a distribuição da coluna 'Duração'
+
+```{r, message=FALSE, warning=FALSE}
+    hist(linha_222$Duracao)
+    hist(linha_812$Duracao)
+    hist(linha_822$Duracao)
+    hist(linha_827$Duracao)
+```
+
+Aparentemente, nossos dados apresentam uma distribuição sem nenhum outlier muito perceptível.
+
+#Criando os modelos
+
+Vamos usar o 'Caret' para dividir em treino e teste o dataset e criar os modelos. No caso, vamos criar um modelo pra cada linha. Cada um desses modelos irá tentar prever a duração da viagem da sua, respectiva, linha.
+
+```{r, warning=FALSE, message=FALSE}
+    library(caret)
+
+   #Criando as partições de treino e teste    
+    index_222 <- createDataPartition(linha_222$Duracao, p = .75, list = FALSE)
+    index_812 <- createDataPartition(linha_812$Duracao, p = .75, list = FALSE)
+    index_822 <- createDataPartition(linha_822$Duracao, p = .75, list = FALSE)
+    index_827 <- createDataPartition(linha_827$Duracao, p = .75, list = FALSE)
+
+    training_222  <- linha_222[ index_222,]
+    testing_222  <- linha_222[-index_222,]
+
+    training_812 <- linha_812[ index_812,]
+    testing_812  <- linha_812[-index_812,]
+
+    training_822 <- linha_822[ index_822,]
+    testing_822  <- linha_822[-index_822,]
+
+    training_827 <- linha_827[ index_827,]
+    testing_827  <- linha_827[-index_827,]
+
+   #Usando cross-validation para evitar o overfitting
+    fitControl <- trainControl(
+                           method = "repeatedcv",
+                           number = 10,
+                           repeats = 10)
+
+   #Treinando os modelos usando regressão linear
+    model_222 <- train(Duracao ~ Distancia, data = training_222,
+                 method = "lm",
+                 metric = "RMSE",
+                 trControl = fitControl)
+
+    model_812 <- train(Duracao ~ Distancia, data = training_812,
+                 method = "lm",
+                 metric = "RMSE",
+                 trControl = fitControl)
+
+    model_822 <- train(Duracao ~ Distancia, data = training_822,
+                 method = "lm",
+                 metric = "RMSE",
+                 trControl = fitControl)
+
+    model_827 <- train(Duracao ~ Distancia, data = training_827,
+                 method = "lm",
+                 metric = "RMSE",
+                 trControl = fitControl)
+
+    print(model_222)
+    print(model_812)
+    print(model_822)
+    print(model_827)
+```
+
+Conseguimos um bom R2 no treino. Agora, vamos ver como os modelos se comportam no teste.
+
+#Testando os modelos de Linhas
+
+Vamos agora testar nossosm modelos e calcular o R2 e RMSE pra cada um.
+
+```{r, warning=FALSE, message=FALSE}
+    predicoes_222 <- predict(model_222, select(testing_222, Distancia))
+    predicoes_812 <- predict(model_812, select(testing_812, Distancia))
+    predicoes_822 <- predict(model_822, select(testing_822, Distancia))
+    predicoes_827 <- predict(model_827, select(testing_827, Distancia))
+
+    residuos_222 <- testing_222$Duracao - predicoes_222 
+    residuos_812 <- testing_812$Duracao - predicoes_812 
+    residuos_822 <- testing_822$Duracao - predicoes_822 
+    residuos_827 <- testing_827$Duracao - predicoes_827
+
+     r2_222 <- R2(predicoes_222, testing_222$Duracao)
+     r2_812 <- R2(predicoes_812, testing_812$Duracao)
+     r2_822 <- R2(predicoes_822, testing_822$Duracao)
+     r2_827 <- R2(predicoes_827, testing_827$Duracao)
+
+  
+     rmse_222 <- RMSE(predicoes_222, testing_222$Duracao)
+     rmse_812 <- RMSE(predicoes_812, testing_812$Duracao)
+     rmse_822 <- RMSE(predicoes_822, testing_822$Duracao)
+     rmse_827 <- RMSE(predicoes_827, testing_827$Duracao)
+
+    r2_222
+    r2_812
+    r2_822
+     r2_827
+
+    rmse_222
+    rmse_812
+    rmse_822
+   rmse_827
+```
+
+Vemos que apresentamos um R2 bem alto, o que indica que os nossos modelos conseguem explicar uma alta porcentagem da variação da nossa variável alvo. Isso, também, indica que todas as linhas são bastante previsiveís. Podemos agora mostrar os gráficos entre as nossas predições e o valor real.
+
+```{r, message=FALSE, warning=FALSE}
+          plot(predicoes_222, testing_222$Duracao)
+          plot(predicoes_812, testing_812$Duracao)
+          plot(predicoes_822, testing_822$Duracao)
+          plot(predicoes_827, testing_827$Duracao)
+
+```
+
+Observando os gráficos acima, vemos claramente que existe uma relação linear forte entre nossas predições e os valores reais.
+
+Feito isso, vamos repetir o processo, mas dessa vez se conentrando apenas nas linhas, e não mais nos veículos.
