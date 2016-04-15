@@ -1,0 +1,23 @@
+---
+title: "checkpoint2"
+author: "Arthur Sena"
+date: "04/13/2016"
+output: html_document
+---
+
+#Descriçao dos dados
+Os dados são referentes aos usuários de ônibus de Curitiba, onde cada linha do arquivo segue o seguinte padrão: 
+
+```{r echo=FALSE, warning=FALSE}
+   library(dplyr)
+   dados <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem4/dados.csv", dec=",")
+   head(dados)
+```
+
+As variáveis e seus significados estão listados abaixo:
+
+__VEIC__ - identificador do veículo
+__LAT__ - coordenada latitude
+__LON__ - coordenada longitude
+__DTHR__ - data e hora da localização
+__COD_LINHA__ - Código da linha de ônibus
