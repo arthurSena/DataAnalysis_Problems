@@ -1,0 +1,299 @@
+---
+title: "checkpoint3"
+author: "Arthur Sena"
+date: "04/30/2016"
+output: html_document
+---
+
+#Descrição dos Dados
+
+Os dados para realizar a predição foram extraídos do portal www.qmrepresenta.com.br, onde são elencados votações polêmicas da câmara dos deputados e que repercutiram na mídia nacional.
+
+O dataset é composto de 540 observações e 25 variáveis, onde a variável IMPEACHMENT será nossa variável resposta. São elas:
+
+
+__id_dep:__ identificador do deputado (é o mesmo identificador para a api da câmara. Ver http://www.camara.leg.br)
+
+__nome:__ Nome do deputado sem acentos, pontuações ou espaços.
+
+__nome_ completo:__ Nome completo do deputado
+
+__partido:__ legenda do partido
+
+__UF:__ estado que o deputado foi eleito
+
+__tema_*:__ variáveis referentes as votações que constam no portal “Quem me Representa”
+
+__IMPEACHMENT:__ voto do impeachment. (variável resposta)
+
+Abaixo é possível visualizar uma pequena amostra dos nossos dados.
+
+```{r,message=FALSE, warning=FALSE}
+    library(GGally)
+    library(caret)
+    library(C50)
+    library(dplyr)
+    set.seed(46)
+    temas <- read.delim("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/temas.csv")
+    imp.votacao <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/imp-votacao.csv")
+    deputados_temas_e_impeachment_v1.1 <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/deputados_temas_e_impeachment_v1.1.csv", sep=";")
+
+    head(imp.votacao)
+    head(deputados_temas_e_impeachment_v1.1)
+
+     deputados_temas_e_impeachment_v1.1$IMPEACHMENT <- as.character(deputados_temas_e_impeachment_v1.1$IMPEACHMENT)
+      deputados_temas_e_impeachment_v1.1 <- filter(deputados_temas_e_impeachment_v1.1, as.character(IMPEACHMENT) != "ABST", as.character(IMPEACHMENT) != "AUSEN")
+      deputados_temas_e_impeachment_v1.1$IMPEACHMENT <- as.factor(deputados_temas_e_impeachment_v1.1$IMPEACHMENT)
+```
+
+
+#Comparando Modelos
+
+Nesse relatório nós vamos usar dois novos modelos e comparar o desempenho dos mesmos.
+
+#Random Forest
+
+Vamos primeiro criar o modelo de floresta aleatória.
+
+#Treinando o modelo (floresta aletória)
+
+```{r,message=FALSE,warning=FALSE}
+      trainIndex <- createDataPartition(deputados_temas_e_impeachment_v1.1$IMPEACHMENT, p = .75,
+                                  list = FALSE,
+                                  times = 1)
+
+      train <- deputados_temas_e_impeachment_v1.1[trainIndex,]
+      test <-  deputados_temas_e_impeachment_v1.1[-trainIndex,]
+
+      fitControl <- trainControl(method="repeatedcv",number=10,repeats=10)
+      rf <- train(data = train[,4:25], 
+                     IMPEACHMENT ~ .,
+                     trControl=fitControl,
+                   method="rf")
+      rf
+```
+
+#Variaveis mais importantes
+
+```{r,message=FALSE, warning=FALSE}
+   varImp(rf)
+```
+
+
+#Testando o modelo (floresta aletória)
+
+```{r,message=FALSE, warning=FALSE}
+    predictions <- predict(rf,newdata=test[,4:24])
+    confusionMatrix(data = predictions, test$IMPEACHMENT)
+```
+ 
+Conseguimos uma acurácia muito boa, mas será que podemos melhorar ? Vamos usar as variáveis 'evangélico' e 'pendencia' criadas no relatório anterior e analisar como o modelo se sai.
+
+#Treinando o modelo (floresta aletória com variável 'envagélico')
+
+```{r,message=FALSE, warning=FALSE}
+  deputados_impeachment_evang <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/deputados_impeachment_evang.csv", sep=";")
+  
+   #Reordenando as colunas
+   deputados_impeachment_evang <- deputados_impeachment_evang[c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,26,25)]
+
+   #Removendo deputados que se absteram-se ou estavam ausentes
+
+     deputados_impeachment_evang$IMPEACHMENT <- as.character(deputados_impeachment_evang$IMPEACHMENT)
+deputados_impeachment_evang <- filter(deputados_impeachment_evang, as.character(IMPEACHMENT) != "ABST", as.character(IMPEACHMENT) != "AUSEN")
+      deputados_impeachment_evang$IMPEACHMENT <- as.factor(deputados_impeachment_evang$IMPEACHMENT)
+
+     trainIndex <- createDataPartition(deputados_impeachment_evang$IMPEACHMENT, p = .75,
+                                  list = FALSE,
+                                  times = 1)
+
+      train <- deputados_impeachment_evang[trainIndex,]
+      test <-  deputados_impeachment_evang[-trainIndex,]
+     
+     rf_evang <- train(data = train[,4:26], 
+                     IMPEACHMENT ~ .,
+                     trControl=fitControl,
+                   method="rf")
+```
+
+#Variaveis mais importantes
+
+```{r,message=FALSE, warning=FALSE}
+   varImp(rf_evang)
+```
+
+#Testando o modelo (floresta aletória com variável 'envagélico')
+
+```{r,message=FALSE, warning=FALSE}
+    predictions <- predict(rf_evang,newdata=test[,4:25])
+    confusionMatrix(data = predictions, test$IMPEACHMENT)
+```
+
+Infelizmente, a acurácia diminuiu em relação ao modelo anterior. Vamos testar agora com a variável 'pendência judicial'.
+
+#Treinando o modelo (floresta aletória com variável 'pendência judicial')
+
+```{r,message=FALSE, warning=FALSE}
+ deputados_impeachment_evang_pend <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/deputados_impeachment_evang_pend.csv", sep=";")
+    
+    deputados_impeachment_evang_pend <- deputados_impeachment_evang_pend[c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,26,27,25)]
+      deputados_impeachment_evang_pend <- select(deputados_impeachment_evang_pend, -evangelico)
+      deputados_impeachment_evang_pend$IMPEACHMENT <- as.character(deputados_impeachment_evang_pend$IMPEACHMENT)
+      deputados_impeachment_evang_pend <- filter(deputados_impeachment_evang_pend, as.character(IMPEACHMENT) != "ABST", as.character(IMPEACHMENT) != "AUSEN")
+      deputados_impeachment_evang_pend$IMPEACHMENT <- as.factor(deputados_impeachment_evang_pend$IMPEACHMENT)
+
+     trainIndex <- createDataPartition(deputados_impeachment_evang_pend$IMPEACHMENT, p = .75,
+                                  list = FALSE,
+                                  times = 1)
+
+      train <- deputados_impeachment_evang_pend[trainIndex,]
+      test <-  deputados_impeachment_evang_pend[-trainIndex,]
+     
+     rf_pend <- train(data = train[,4:26], 
+                     IMPEACHMENT ~ .,
+                     trControl=fitControl,
+                   method="rf")
+```
+
+#Variaveis mais importantes
+
+```{r,message=FALSE, warning=FALSE}
+   varImp(rf_pend)
+```
+
+#Testando o modelo (floresta aletória com variável 'pendência judicial')
+
+```{r,message=FALSE, warning=FALSE}
+    predictions <- predict(rf_pend,newdata=test[,4:25])
+    confusionMatrix(data = predictions, test$IMPEACHMENT)
+```
+
+Conseguimos uma acurácia de 94% adicionando a variável pendência. Ou seja, por enquanto esse é o nosso melhor modelo.
+
+Vamos agora usar o algoritmo KNN pra construir um novo modelo.
+
+#Treinando o modelo (KNN)
+```{r,message=FALSE,warning=FALSE}
+      trainIndex <- createDataPartition(deputados_temas_e_impeachment_v1.1$IMPEACHMENT, p = .75,
+                                  list = FALSE,
+                                  times = 1)
+
+      train <- deputados_temas_e_impeachment_v1.1[trainIndex,]
+      test <-  deputados_temas_e_impeachment_v1.1[-trainIndex,]
+
+      fitControl <- trainControl(method="repeatedcv",number=10,repeats=10)
+      knnFit <- train(IMPEACHMENT ~ . , 
+                data = train[,4:25], 
+                method = "knn", 
+                trControl = fitControl,
+                preProcess = c("center","scale"), 
+                tuneGrid = expand.grid(.k = 2:10),
+                metric = "Accuracy")
+    knnFit
+```
+
+#Variaveis mais importantes
+
+```{r,message=FALSE, warning=FALSE}
+   varImp(knnFit)
+```
+
+
+#Testando o modelo (KNN)
+
+```{r,message=FALSE, warning=FALSE}
+    predictions <- predict(knnFit,newdata=test[,4:24])
+    confusionMatrix(data = predictions, test$IMPEACHMENT)
+```
+ 
+Vamos tentar melhorar esse modelo usando a variável 'evangélico'.
+
+#Treinando o modelo (KNN com variável 'envagélico')
+
+```{r,message=FALSE, warning=FALSE}
+  deputados_impeachment_evang <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/deputados_impeachment_evang.csv", sep=";")
+  
+   #Reordenando as colunas
+   deputados_impeachment_evang <- deputados_impeachment_evang[c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,26,25)]
+
+   #Removendo deputados que se absteram-se ou estavam ausentes
+
+     deputados_impeachment_evang$IMPEACHMENT <- as.character(deputados_impeachment_evang$IMPEACHMENT)
+deputados_impeachment_evang <- filter(deputados_impeachment_evang, as.character(IMPEACHMENT) != "ABST", as.character(IMPEACHMENT) != "AUSEN")
+      deputados_impeachment_evang$IMPEACHMENT <- as.factor(deputados_impeachment_evang$IMPEACHMENT)
+
+     trainIndex <- createDataPartition(deputados_impeachment_evang$IMPEACHMENT, p = .75,
+                                  list = FALSE,
+                                  times = 1)
+
+      train <- deputados_impeachment_evang[trainIndex,]
+      test <-  deputados_impeachment_evang[-trainIndex,]
+     
+   knnFit <- train(IMPEACHMENT ~ . , 
+                data = train[,4:26], 
+                method = "knn", 
+                trControl = fitControl,
+                preProcess = c("center","scale"), 
+                tuneGrid = expand.grid(.k = 2:10),
+                metric = "Accuracy")
+```
+
+#Variaveis mais importantes
+
+```{r,message=FALSE, warning=FALSE}
+   varImp(knnFit)
+```
+
+#Testando o modelo (KNN com a variável 'envagélico')
+
+```{r,message=FALSE, warning=FALSE}
+    predictions <- predict(knnFit,newdata=test[,4:25])
+    confusionMatrix(data = predictions, test$IMPEACHMENT)
+```
+
+Infelizmente, a acurácia diminuiu em relação ao modelo anterior. Vamos testar agora com a variável 'pendência judicial'.
+
+#Treinando o modelo (KNN com a variável 'pendência judicial')
+
+```{r,message=FALSE, warning=FALSE}
+ deputados_impeachment_evang_pend <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/deputados_impeachment_evang_pend.csv", sep=";")
+    
+    deputados_impeachment_evang_pend <- deputados_impeachment_evang_pend[c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,26,27,25)]
+      deputados_impeachment_evang_pend <- select(deputados_impeachment_evang_pend, -evangelico)
+      deputados_impeachment_evang_pend$IMPEACHMENT <- as.character(deputados_impeachment_evang_pend$IMPEACHMENT)
+      deputados_impeachment_evang_pend <- filter(deputados_impeachment_evang_pend, as.character(IMPEACHMENT) != "ABST", as.character(IMPEACHMENT) != "AUSEN")
+      deputados_impeachment_evang_pend$IMPEACHMENT <- as.factor(deputados_impeachment_evang_pend$IMPEACHMENT)
+
+     trainIndex <- createDataPartition(deputados_impeachment_evang_pend$IMPEACHMENT, p = .75,
+                                  list = FALSE,
+                                  times = 1)
+
+      train <- deputados_impeachment_evang_pend[trainIndex,]
+      test <-  deputados_impeachment_evang_pend[-trainIndex,]
+     
+     knnFit <- train(IMPEACHMENT ~ . , 
+                data = train[,4:26], 
+                method = "knn", 
+                trControl = fitControl,
+                preProcess = c("center","scale"), 
+                tuneGrid = expand.grid(.k = 2:10),
+                metric = "Accuracy")
+```
+
+#Variaveis mais importantes
+
+```{r,message=FALSE, warning=FALSE}
+   varImp(knnFit)
+```
+
+#Testando o modelo (knn com variável 'pendência judicial')
+
+```{r,message=FALSE, warning=FALSE}
+    predictions <- predict(knnFit,newdata=test[,4:25])
+    confusionMatrix(data = predictions, test$IMPEACHMENT)
+```
+
+Melhorando significativamente o modelo, porém ainda não foi melhor que o modelo de random forest.
+
+#Conclusão
+Melhor modelo obtido levando em consideração a acurácia foi o Random forest usando a variável 'pendência judicial'. O mesmo conseguiu uma acurácia de 94%.

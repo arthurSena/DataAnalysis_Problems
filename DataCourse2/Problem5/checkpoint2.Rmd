@@ -1,0 +1,118 @@
+---
+title: "teste"
+author: "Arthur Sena"
+date: "04/30/2016"
+output: html_document
+---
+
+#Descrição dos Dados
+
+Os dados para realizar a predição foram extraídos do portal www.qmrepresenta.com.br, onde são elencados votações polêmicas da câmara dos deputados e que repercutiram na mídia nacional.
+
+O dataset é composto de 540 observações e 25 variáveis, onde a variável IMPEACHMENT será nossa variável resposta. São elas:
+
+
+__id_dep:__ identificador do deputado (é o mesmo identificador para a api da câmara. Ver http://www.camara.leg.br)
+
+__nome:__ Nome do deputado sem acentos, pontuações ou espaços.
+
+__nome_ completo:__ Nome completo do deputado
+
+__partido:__ legenda do partido
+
+__UF:__ estado que o deputado foi eleito
+
+__tema_*:__ variáveis referentes as votações que constam no portal “Quem me Representa”
+
+__IMPEACHMENT:__ voto do impeachment. (variável resposta)
+
+Abaixo é possível visualizar uma pequena amostra dos nossos dados.
+
+```{r,message=FALSE, warning=FALSE}
+        library(GGally)
+    library(caret)
+    library(C50)
+    temas <- read.delim("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/temas.csv")
+    
+imp.votacao <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/imp-votacao.csv")
+    deputados_temas_e_impeachment_v1.1 <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/deputados_temas_e_impeachment_v1.1.csv", sep=";")
+    
+    head(imp.votacao)
+    head(deputados_temas_e_impeachment_v1.1)
+```
+
+Vamos analisar a frequência dos votos.
+```{r, message=FALSE, warning=FALSE}
+    table(deputados_temas_e_impeachment_v1.1$IMPEACHMENT)
+```
+
+Vemos que temos uma porcentagem de 66% de deputados a favor do impeachment.
+
+#Treinando o modelo (floresta aletória)
+
+Vamos treinar um modelo de floresta aletória.
+
+```{r, message=FALSE, warning=FALSE}
+
+    trainIndex <- createDataPartition(deputados_temas_e_impeachment_v1.1$IMPEACHMENT, p = .75,
+                                  list = FALSE,
+                                  times = 1)
+
+      train <- deputados_temas_e_impeachment_v1.1[trainIndex,]
+      test <-  deputados_temas_e_impeachment_v1.1[-trainIndex,]
+
+      fitControl <- trainControl(method="repeatedcv",number=5,repeats=5)
+      model <- train(data = train[,4:25], 
+                     IMPEACHMENT ~ .,
+                     trControl=fitControl,
+                     method="rf")
+      model
+```
+
+
+#Testando o modelo (floresta aletória)
+
+```{r,message=FALSE, warning=FALSE}
+    predictions <- predict(model,newdata=test[,4:24])
+    confusionMatrix(data = predictions, test$IMPEACHMENT)
+```
+
+Conseguimos um valor muito bom para um primeiro modelo, onde obtivemos uma acurácia (O quão preciso) de quase 90%.
+
+
+#Treinando o modelo (knn)
+
+Vamos usar agora treinar um modelo KNN e observar o resultado.
+
+```{r, message=FALSE, warning=FALSE }
+   ctrl <- trainControl(method = "repeatedcv", number = 10)
+   knnFit <- train(IMPEACHMENT ~ . , 
+                data = train[,4:25], 
+                method = "knn", 
+                trControl = ctrl,
+                preProcess = c("center","scale"), 
+                tuneGrid = expand.grid(.k = 2:10),
+                metric = "Accuracy")
+
+    knnFit
+```
+
+
+#Testando o modelo (knn)
+
+```{r,message=FALSE, warning=FALSE}
+    predictions <- predict(knnFit,newdata=test[,4:24])
+    confusionMatrix(data = predictions, test$IMPEACHMENT)
+```
+
+```{r,message=FALSE, warning=FALSE}
+     ctrl <- trainControl(method = "repeatedcv", number = 10)
+   knnFit <- train(IMPEACHMENT ~ . , 
+                data = train[,4:25], 
+                method = "knn", 
+                trControl = ctrl,
+                preProcess = c("center","scale"), 
+                tuneGrid = expand.grid(.k = 2:10),
+                metric = "Accuracy")
+```
+

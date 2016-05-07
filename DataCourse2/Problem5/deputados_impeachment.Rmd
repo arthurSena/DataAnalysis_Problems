@@ -1,0 +1,275 @@
+---
+title: "Checkpoint1"
+author: "Arthur Sena"
+date: "04/29/2016"
+output: html_document
+---
+
+#Descrição dos Dados
+
+Os dados para realizar a predição foram extraídos do portal www.qmrepresenta.com.br, onde são elencados votações polêmicas da câmara dos deputados e que repercutiram na mídia nacional.
+
+O dataset é composto de 540 observações e 25 variáveis, onde a variável IMPEACHMENT será nossa variável resposta. São elas:
+
+
+__id_dep:__ identificador do deputado (é o mesmo identificador para a api da câmara. Ver http://www.camara.leg.br)
+
+__nome:__ Nome do deputado sem acentos, pontuações ou espaços.
+
+__nome_ completo:__ Nome completo do deputado
+
+__partido:__ legenda do partido
+
+__UF:__ estado que o deputado foi eleito
+
+__tema_*:__ variáveis referentes as votações que constam no portal “Quem me Representa”
+
+__IMPEACHMENT:__ voto do impeachment. (variável resposta)
+
+Abaixo é possível visualizar uma pequena amostra dos nossos dados.
+
+```{r,message=FALSE, warning=FALSE}
+    library(GGally)
+    library(caret)
+    library(C50)
+    library(dplyr)
+    set.seed(46)
+    temas <- read.delim("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/temas.csv")
+    imp.votacao <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/imp-votacao.csv")
+    deputados_temas_e_impeachment_v1.1 <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/deputados_temas_e_impeachment_v1.1.csv", sep=";")
+
+    head(imp.votacao)
+    head(deputados_temas_e_impeachment_v1.1)
+
+     deputados_temas_e_impeachment_v1.1$IMPEACHMENT <- as.character(deputados_temas_e_impeachment_v1.1$IMPEACHMENT)
+      deputados_temas_e_impeachment_v1.1 <- filter(deputados_temas_e_impeachment_v1.1, as.character(IMPEACHMENT) != "ABST", as.character(IMPEACHMENT) != "AUSEN")
+      deputados_temas_e_impeachment_v1.1$IMPEACHMENT <- as.factor(deputados_temas_e_impeachment_v1.1$IMPEACHMENT)
+```
+
+Obs.: Eu precisei eliminar os deputados que estiveram ausente ou que se abstiveram, pois o caret reclama que não pode usar o glm pra classificar uma variável que apresenta mais que dois níveis. Ou seja, apenas deixei os deputados que votaram SIM ou NÃO.
+
+
+Vamos analisar a frequência dos votos.
+```{r, message=FALSE, warning=FALSE}
+    table(deputados_temas_e_impeachment_v1.1$IMPEACHMENT)
+```
+
+Vemos que temos uma porcentagem de 66% de deputados a favor do impeachment.
+
+Vamos agora ver como as nossas variáveis se relacionam com a variável alvo.
+
+```{r,message=FALSE, warning=FALSE}
+   ggpairs(deputados_temas_e_impeachment_v1.1[,c(4,5,25)])
+   ggpairs(deputados_temas_e_impeachment_v1.1[,c(6,7,8,9,25)])
+   ggpairs(deputados_temas_e_impeachment_v1.1[,c(10,11,12,13,25)])
+   ggpairs(deputados_temas_e_impeachment_v1.1[,c(14,15,16,17,25)])
+   ggpairs(deputados_temas_e_impeachment_v1.1[,c(18,19,20,21,25)])
+   ggpairs(deputados_temas_e_impeachment_v1.1[,c(22,23,24,25)])
+```
+
+#Treinando o modelo (regressão-logistica)
+
+```{r,message=FALSE, warning=FALSE}
+      trainIndex <- createDataPartition(deputados_temas_e_impeachment_v1.1$IMPEACHMENT, p = .75,
+                                  list = FALSE,
+                                  times = 1)
+
+      train <- deputados_temas_e_impeachment_v1.1[trainIndex,]
+      test <-  deputados_temas_e_impeachment_v1.1[-trainIndex,]
+       ctrl <- trainControl(method = "repeatedcv", number = 10,repeats=10, savePredictions = TRUE)
+      logit <- train(IMPEACHMENT ~ ., method='glm', family='binomial', data=train[,4:25], trControl = ctrl)
+```
+
+#Importância das variáveis.
+
+```{r, warning=FALSE, message=FALSE}
+   (varImp(logit))
+```
+
+Vemos que a variável partido é a mais importante para o modelo.
+
+
+#Testando o modelo (regressão-logistica)
+```{r,message=FALSE, warning=FALSE}
+      confusionMatrix(test$IMPEACHMENT, predict(logit, test[,4:24]))
+```
+
+#Engenharia de Features
+
+Podemos tentar melhorar nosso modelo apenas adicionando variáveis que possam ajudá-lo. Por exemplo, segundo essa [notícia](http://www.gazetadopovo.com.br/blogs/caixa-zero/93-dos-deputados-da-bancada-evangelica-votaram-pelo-impeachment/) 93% dos deputados da bancada evangélica votaram pelo impeachment. Desse modo, uma variável que pudesse dizer se o deputado é ou não evangélico poderia ajudar o modelo.
+
+Pensando nisso, eu achei esse [link](http://noticias.gospelmais.com.br/lista-deputados-evangelicos-favor-contra-impeachment-82156.html) que contém a lista dos deputados evangélicos, e a partir disso, fiz um script em python que cria a coluna "evangelico". O script pode ser visualizado logo abaixo:
+
+```{r,eval=FALSE}
+#!/usr/bin/env python
+import sys  
+
+reload(sys)  
+sys.setdefaultencoding('utf8')
+
+f = open('deputados_temas_e_impeachment_v1.1.csv','r')
+
+evang = open('deput_evang_lista.txt','r')
+
+lista_evang = []
+for nome in evang.readlines():
+  	nome_formatado = (nome.strip()).split(" ")[0:2]
+		if "(" not in nome_formatado[1]:
+			temp1 = nome_formatado[0]
+			temp2 = nome_formatado[1] 
+			nome_sobrenome = temp1 + temp2
+			nome_sobrenome
+			lista_evang.append(nome_sobrenome)
+		else:
+			temp1 = nome_formatado[0]
+			nome_sem_sobrenome = temp1
+			lista_evang.append(nome_sem_sobrenome)
+
+for line in f.readlines():
+	nome_deputado  =  (line.strip()).split(";")[1]
+	if "id_dep" in (line.strip()).split(";"):
+		print (line.strip()) + ";" + "evangelico"
+	elif nome_deputado.upper() in lista_evang:
+		print (line.strip()) + ";" + "sim"
+	else:
+		print (line.strip()) + ";" + "nao"
+```
+
+Agora vamos importar o nosso novo dataset.
+
+```{r,message=FALSE, warning=F}
+     deputados_impeachment_evang <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/deputados_impeachment_evang.csv", sep=";")
+  
+   #Reordenando as colunas
+   deputados_impeachment_evang <- deputados_impeachment_evang[c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,26,25)]
+
+   #Removendo deputados que se absteram-se ou estavam ausentes
+
+     deputados_impeachment_evang$IMPEACHMENT <- as.character(deputados_impeachment_evang$IMPEACHMENT)
+deputados_impeachment_evang <- filter(deputados_impeachment_evang, as.character(IMPEACHMENT) != "ABST", as.character(IMPEACHMENT) != "AUSEN")
+      deputados_impeachment_evang$IMPEACHMENT <- as.factor(deputados_impeachment_evang$IMPEACHMENT)
+```
+
+Vamos analisar a relação da nossa nova variavel com o target.
+
+```{r,message=FALSE, warning=F}
+      ggpairs(deputados_impeachment_evang[,c(25,26)])
+```
+
+Vemos que todos os deputados que marcamos como evangéligos votaram a favor do impeachment, ou seja, nossa nova variável tem uma boa relação com o alvo.
+
+#Treinando modelo (usando variavel "evangelico")
+
+```{r,message=FALSE, warning=FALSE}
+     trainIndex <- createDataPartition(deputados_impeachment_evang$IMPEACHMENT, p = .75,
+                                  list = FALSE,
+                                  times = 1)
+
+      train <- deputados_impeachment_evang[trainIndex,]
+      test <-  deputados_impeachment_evang[-trainIndex,]
+     
+      logit2 <- train(IMPEACHMENT ~ ., method='glm', family='binomial', data=train[,4:26], trControl = ctrl)
+```
+
+#Importância das variáveis.
+
+```{r,message=FALSE, warning=FALSE}
+   varImp(logit2)
+```
+
+Vemos que a nova variável se encontra entre as vinte mais importantes. O que é um bom sinal.
+
+#Testando o modelo (usando variavel "evangelico")
+
+```{r,message=FALSE,warning=FALSE}
+    confusionMatrix(test$IMPEACHMENT, predict(logit2, test[,4:25]))
+```
+
+Observando os resultados, vemos que conseguimos melhorar a acurácia do nosso modelo usando a variável nova.
+
+Outro fato interessante sobre os nossos deputados é que quase 60% dos que votaram contra o governo apresentam alguma pendência na justiça segundo esse [link](http://www.ebc.com.br/noticias/politica/2016/04/cerca-60-dos-deputados-federais-que-julgaram-dilma-tem-pendencias-na). O mesmo link apresenta uma lista dos deputados.
+
+Desse modo, vamos criar outra variável que diga se o deputado tem uma pendência judicial ou não. Para isso, novamente precisei criar um script em python que pudesse me ajudar. O código pode ser visto abaixo.
+
+```{r,message=FALSE, warning=FALSE, eval=FALSE}
+#!/usr/bin/env python
+import sys  
+
+reload(sys)  
+sys.setdefaultencoding('utf8')
+
+from unidecode import unidecode
+
+f = open('deputados_impeachment_evang.csv','r')
+
+deput_pend_jud = open('deput_pend_jud.txt','r')
+
+
+lista_pend = []
+for line in deput_pend_jud.readlines():
+  temp = line.strip().split("\t")
+	if len(temp) > 1:
+		if len(temp[0].split(" ")) == 2:
+			lista_pend.append("".join(temp[0].split(" ")))
+		elif len(temp[0].split(" ")) > 2:
+			nome1 = temp[0].split(" ")[0]
+			nome2 = temp[0].split(" ")[1]
+			lista_pend.append(nome1 + nome2)		
+
+for line in f.readlines():
+	nome_deputado  =  (line.strip()).split(";")[1]
+	if "id_dep" in (line.strip()).split(";"):
+		print (line.strip()) + ";" + "pendencia"
+	elif nome_deputado.upper() in lista_pend:
+		print (line.strip()) + ";" + "sim"
+	else:
+		print (line.strip()) + ";" + "nao"
+```
+
+Com a nova coluna criada, vamos repetir o processo de construção e teste do modelo.
+
+```{r,message=FALSE, warning=FALSE}
+    deputados_impeachment_evang_pend <- read.csv("~/Documents/DataAnalysis_Problems/DataCourse2/Problem5/deputados_impeachment_evang_pend.csv", sep=";")
+    
+    deputados_impeachment_evang_pend <- deputados_impeachment_evang_pend[c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,26,27,25)]
+      deputados_impeachment_evang_pend <- select(deputados_impeachment_evang_pend, -evangelico)
+      deputados_impeachment_evang_pend$IMPEACHMENT <- as.character(deputados_impeachment_evang_pend$IMPEACHMENT)
+      deputados_impeachment_evang_pend <- filter(deputados_impeachment_evang_pend, as.character(IMPEACHMENT) != "ABST", as.character(IMPEACHMENT) != "AUSEN")
+      deputados_impeachment_evang_pend$IMPEACHMENT <- as.factor(deputados_impeachment_evang_pend$IMPEACHMENT)
+  
+```
+
+#Relação da variável com o alvo
+
+```{r, message=FALSE, warning=FALSE}
+   ggpairs(deputados_impeachment_evang_pend[,c(26,25)])
+```
+
+Todos os deputados que apresentam pendências judiciais votaram sim. Isso é um bom indicador de que estamos no caminho certo.
+
+#Treinando o modelo (usando variavel "pendência judicial")
+```{r, message=FALSE, warning=FALSE}
+      trainIndex <- createDataPartition(deputados_impeachment_evang_pend$IMPEACHMENT, p = .75,
+                                  list = FALSE,
+                                  times = 1)
+
+      train <- deputados_impeachment_evang_pend[trainIndex,]
+      test <-  deputados_impeachment_evang_pend[-trainIndex,]
+     
+      logit3 <- train(IMPEACHMENT ~ ., method='glm', family='binomial', data=train[,4:26], trControl = ctrl)
+```
+
+#Importância das variáveis
+
+```{r,message=FALSE, warning=FALSE}
+    varImp(logit3)
+```
+
+Vemos que a variável 'penência' se encontra entre as mais importantes. Vamos agora testar.
+
+#Testando o modelo (usando variavel "pendência judicial")
+```{r,message=FALSE, warning=FALSE}
+   confusionMatrix(test$IMPEACHMENT, predict(logit3, test[,4:25]))
+```
+
+Novamente, conseguimos aumentar a acurácia em relação ao primeiro modelo criado.
