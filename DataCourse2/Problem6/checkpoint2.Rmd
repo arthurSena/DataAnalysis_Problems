@@ -1,0 +1,16 @@
+---
+title: "checkpoint2"
+author: "Arthur Sena"
+date: "05/12/2016"
+output: html_document
+---
+
+#Minhas Estratégias
+
+###__1)__ A primeira estratégia que eu tinha imaginado seria utilizar Árvore de Decisão para classificar os itens e assim poder dizer se eu recomendaria ou não o item para determinado o usuário. Porém, eu analisei melhor tal método e descobri que ele não é uma boa abordagem por alguns motivos. O principal motivo é que eu precisaria construir um dataset de treino enorme, visto que cada linha deste seria um usuário com um determinado item. Ou seja, basicamente eu precisaria multiplicar as tabelas 'User' e 'Item' o que resultaria em uma tabela muito grande.
+
+###__2)__ A segunda abordagem que eu pensei seria utilizar filtragem colaborativa para resolver o problema, onde eu tentaria recomendar itens para os usuários do teste a partir dos usuários mais parecidos que se encontrem no treino. Desse modo, eu recomendo os itens que tais usuários parecidos clicaram no treino.
+
+###__3)__ A Terceira idéia é utilizar o algoritmo chamado de 'KNN' para agrupar os usuários de forma a utilizar as variáveis que são comuns aos usuários e itens. Desse modo, eu iria receber os itens como teste e conseguir agrupar eles nos mesmos grupos dos usuários e assim fazer a recomendação.
+
+###__Conclusão:__ Penso em testar a abordagem de número três primeiro e, posteriormente, tentar a de número 2
